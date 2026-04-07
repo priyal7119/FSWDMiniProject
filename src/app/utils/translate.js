@@ -1,0 +1,36 @@
+export const translations = {
+  English: {
+    dashboardHeading: "Your Learning Dashboard",
+    dashboardSubheading: "Explore features and track your progress.",
+    resumeStudioHeading: "Resume Studio",
+    resumeStudioSubheading: "Build, analyze, and optimize your resume with AI-powered insights.",
+    careerPlannerHeading: "Career Planner & Timeline",
+    careerPlannerSubheading: "Plan your career path with a 4-year roadmap and milestones.",
+    projectsHeading: "Recommended Projects",
+    projectsSubheading: "Build practical projects to showcase your skills.",
+    bookmarksHeading: "My Bookmarks",
+    bookmarksSubheading: "Save useful learning resources for quick access.",
+    researchGuideHeading: "Research Paper Writing Guide",
+    researchGuideSubheading: "Learn to write academic papers with structure and clarity.",
+    interviewHeading: "Interview Preparation FAQs",
+    interviewSubheading: "Master technical, behavioral, and project interview questions.",
+  },
+  Hindi: {
+    dashboardHeading: "आपका लर्निंग डैशबोर्ड",
+    dashboardSubheading: "विशेषताएँ एक्सप्लोर करें और अपनी प्रगति ट्रैक करें।",
+    resumeStudioHeading: "रेज़्यूम स्टूडियो",
+    resumeStudioSubheading: "AI-संचालित विश्लेषण के साथ अपना रेज़्यूम बनाएं और अनुकूलित करें।",
+    careerPlannerHeading: "करियर प्लानर और टाइमलाइन",
+    careerPlannerSubheading: "4 वर्षीय रोडमैप और माइलीस्टोन के साथ अपना करियर प्लान करें।",
+    projectsHeading: "अनुशंसित प्रोजेक्ट",
+    projectsSubheading: "अपनी क्षमताओं को दिखाने के लिए व्यावहारिक प्रोजेक्ट बनाएँ।",
+    bookmarksHeading: "मेरी बुकमार्क",
+    bookmarksSubheading: "त्वरित पहुँच के लिए उपयोगी संसाधनों को सहेजें।",
+    researchGuideHeading: "शोध पत्र लेखन मार्गदर्शिका",
+    researchGuideSubheading: "संरचना और स्पष्टता के साथ अकादमिक पेपर लिखना सीखें।",
+    interviewHeading: "इंटरव्यू तैयारी FAQs",
+    interviewSubheading: "तकनीकी, व्यवहारिक, और प्रोजेक्ट प्रश्नों में दक्षता प्राप्त करें।",
+  },
+};
+
+export const t = (key, language = "English") => translations[language]?.[key] || translations.English[key] || "";
