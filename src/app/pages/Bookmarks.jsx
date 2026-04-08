@@ -19,6 +19,8 @@ export function Bookmarks() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState("grid");
   const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [itemToRemove, setItemToRemove] = useState(null);
   const token = localStorage.getItem("token");
@@ -33,7 +35,9 @@ export function Bookmarks() {
     const fetchBookmarks = async () => {
       try {
         const data = await getBookmarks(token);
-        setItems(Array.isArray(data) ? data : []);
+        const bookmarks = Array.isArray(data) ? data : [];
+        setItems(bookmarks);
+        setFilteredItems(bookmarks);
       } catch (err) {
         console.error("Error fetching bookmarks:", err);
         toastError("Failed to fetch your saved library.");
@@ -76,6 +80,8 @@ export function Bookmarks() {
             color: "bg-pink-50",
           },
         ]);
+        setItems(mock);
+        setFilteredItems(mock);
       } finally {
         setLoading(false);
       }
@@ -83,6 +89,14 @@ export function Bookmarks() {
 
     fetchBookmarks();
   }, [token, navigate]);
+
+  useEffect(() => {
+    if (activeFilter === "all") {
+      setFilteredItems(items);
+    } else {
+      setFilteredItems(items.filter(item => item.type === activeFilter));
+    }
+  }, [activeFilter, items]);
 
   const handleRemove = async (id) => {
     try {
@@ -207,7 +221,12 @@ export function Bookmarks() {
               {[{id: 'all', label: 'All'}, {id: 'project', label: 'Projects'}, {id: 'course', label: 'Courses'}, {id: 'faq', label: 'FAQs'}].map((type) => (
                 <button
                   key={type.id}
-                  className="px-5 py-2 rounded-full text-sm font-bold shadow-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  onClick={() => setActiveFilter(type.id)}
+                  className={`px-5 py-2 rounded-full text-sm font-bold shadow-sm transition-colors ${
+                    activeFilter === type.id 
+                    ? "bg-[var(--mapout-secondary)] text-white" 
+                    : "bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600"
+                  }`}
                   aria-label={`Filter by ${type.label}`}
                 >
                   {type.label}
@@ -220,7 +239,7 @@ export function Bookmarks() {
         {/* Grid View */}
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <div key={item.id} className={`${item.color} dark:bg-slate-900/40 border border-transparent dark:border-white/5 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 group`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center justify-center w-12 h-12 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-transparent dark:border-white/10 group-hover:scale-110 transition-transform">
@@ -285,7 +304,7 @@ export function Bookmarks() {
           /* List View */
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-white/5">
             <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <div className="flex items-center gap-6 flex-1">
                     <div className="flex items-center justify-center w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl shadow-inner group-hover:scale-105 transition-transform">

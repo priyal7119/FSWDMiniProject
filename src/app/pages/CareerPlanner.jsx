@@ -4,7 +4,7 @@ import {
   Briefcase, GraduationCap, Search, CheckCircle, 
   ChevronDown, ArrowRight, Target, Zap, Check, X, 
   TrendingUp, Award, Map, Lightbulb, PlayCircle, BookMarked, Calendar, LayoutDashboard, Clock, User,
-  BookOpen, FileText, Globe, Rocket, Compass
+  BookOpen, FileText, Globe, Rocket, Compass, ChevronRight
 } from "lucide-react";
 import { getRoadmap, setRoadmap, getMilestones, toggleMilestone, addMilestone } from "../utils/api.js";
 import { useToast } from "../components/Toast.jsx";
@@ -25,12 +25,15 @@ export function CareerPlanner() {
   const [selectedPath, setSelectedPath] = useState(null);
   const [selectedRole, setSelectedRole] = useState("Frontend Developer");
   const [roadmapData, setRoadmapData] = useState([]);
+  const [userSkills, setUserSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Tab states
   const [activeGateTab, setActiveGateTab] = useState("study_plan");
-  const [expandedYear, setExpandedYear] = useState(null);
+  const [expandedYear, setExpandedYear] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [roleSkills, setRoleSkills] = useState([]);
 
   // Scroll references
   const customizeRef = useRef(null);
@@ -45,17 +48,23 @@ export function CareerPlanner() {
     const initData = async () => {
       try {
         setLoading(true);
-        // Fetch roadmap selection
-        const roadmap = await getRoadmap();
+        const [roadmap, milestones, skills] = await Promise.all([
+          getRoadmap(),
+          getMilestones(),
+          getSkills()
+        ]);
+
+        setUserSkills(skills?.map(s => s.skill_name.toLowerCase()) || []);
+
         if (roadmap) {
           setSelectedPath(roadmap.selected_path);
           setSelectedRole(roadmap.target_role || "Frontend Developer");
-          if (roadmap.selected_path) setActiveStep(2);
+          if (roadmap.selected_path) {
+             setActiveStep(2);
+             updateRoleSkills(roadmap.target_role || "Frontend Developer");
+          }
         }
-
-        // Fetch milestones
-        const milestones = await getMilestones();
-        setRoadmapData(milestones);
+        setRoadmapData(milestones || []);
       } catch (err) {
         console.error("Error initializing planner:", err);
       } finally {
@@ -66,29 +75,47 @@ export function CareerPlanner() {
     initData();
   }, [token]);
 
+  const updateRoleSkills = (role) => {
+    // Simulated role-based skill requirements
+    const toolkit = {
+      "Frontend Developer": ["React & Next.js", "TypeScript", "Tailwind CSS", "State Management (Redux/Zustand)", "Browser APIs"],
+      "Backend Developer": ["Node.js / Go", "PostgreSQL", "Redis", "Docker & K8s", "REST/GraphQL Design"],
+      "Full Stack Developer": ["React", "Express", "Supabase", "System Architecture", "Deployment Pipelines"],
+      "Data Scientist": ["Python (Pandas/NumPy)", "Scikit-Learn", "SQL", "Statistics", "Data Visualization"],
+      "AI/ML Engineer": ["PyTorch/TensorFlow", "Math for ML", "MLOps", "LLM Fine-tuning", "Transformers"],
+    };
+    setRoleSkills(toolkit[role] || toolkit["Frontend Developer"]);
+  };
   const handlePathSelect = async (pathId) => {
     try {
+      setIsGenerating(true);
       setSelectedPath(pathId);
       setActiveStep(2);
       setShowProgress(false);
       
-      // Persist to Supabase
+      // Persist to Supabase and Seed Milestones
       await setRoadmap({ selected_path: pathId, target_role: selectedRole });
+      
+      const updatedMilestones = await getMilestones();
+      setRoadmapData(updatedMilestones);
       
       setTimeout(() => {
         customizeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         info(`Path Saved: ${pathId.replace('_', ' ').toUpperCase()}`);
-      }, 150);
+        setIsGenerating(false);
+      }, 500);
     } catch (err) {
+      setIsGenerating(false);
       warning("Failed to save path selection.");
     }
   };
 
   const handleRoleChange = async (role) => {
     setSelectedRole(role);
+    updateRoleSkills(role);
     try {
       await setRoadmap({ selected_path: selectedPath, target_role: role });
-      success(`Target set to ${role}`);
+      success(`Target role set to ${role}`);
     } catch (err) {
       console.error(err);
     }
@@ -118,6 +145,19 @@ export function CareerPlanner() {
 
   return (
     <div className="bg-gray-50 dark:bg-slate-950 min-h-screen pb-20 font-sans transition-colors duration-300" style={{ scrollBehavior: 'smooth' }}>
+      
+      {/* GENERATING OVERLAY */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-[100] bg-[#0A192F]/80 backdrop-blur-md flex flex-col items-center justify-center text-white">
+          <div className="relative w-24 h-24 mb-6">
+            <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-t-blue-500 rounded-full animate-spin"></div>
+            <Rocket className="absolute inset-0 m-auto text-blue-400 animate-bounce" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold tracking-widest uppercase mb-2">Architecting Roadmap</h2>
+          <p className="text-blue-200/70 font-medium">Syncing specialized milestones to your profile...</p>
+        </div>
+      )}
       
       {/* 1. STICKY HEADER PROGRESS */}
       <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-white/10 shadow-sm transition-all duration-300">
@@ -302,7 +342,7 @@ export function CareerPlanner() {
                     <h4 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-widest mb-6 border-b border-gray-100 dark:border-white/5 pb-3 flex items-center gap-2">
                       <LayoutDashboard size={16} className="text-[#0A192F] dark:text-blue-400" /> Required Toolkit
                     </h4>
-                    {['React & Redux', 'Advanced TypeScript', 'PostgreSQL / SQL', 'System Design Patterns', 'AWS Cloud Architectures'].map((skill, i) => (
+                    {roleSkills.map((skill, i) => (
                       <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-slate-800/40 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors border border-transparent">
                         <div className="w-2 h-2 rounded-full bg-[#0A192F] dark:bg-blue-400 shadow-sm"></div>
                         <span className="text-[14px] font-semibold text-[#0A192F] dark:text-white">{skill}</span>
@@ -310,25 +350,20 @@ export function CareerPlanner() {
                     ))}
                   </div>
 
-                  {/* Status Column */}
                   <div className="space-y-4">
                     <h4 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-widest mb-6 border-b border-gray-100 dark:border-white/5 pb-3 flex items-center gap-2">
-                      <User size={16} className="text-[#00B4D8]" /> Your Profile Match
+                      <User size={16} className="text-[#00B4D8]" /> Match Stats
                     </h4>
-                    {[
-                      { status: 'Completed', color: 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30', icon: Check, weight:'font-bold' },
-                      { status: 'In Progress', color: 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900/30', icon: Zap, weight:'font-bold' },
-                      { status: 'Missing', color: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30', icon: X, weight:'font-bold' },
-                      { status: 'Missing', color: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/30', icon: X, weight:'font-bold' },
-                      { status: 'Completed', color: 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/30', icon: Check, weight:'font-bold' }
-                    ].map((s, i) => {
-                      const Icon = s.icon;
+                    {roleSkills.map((skill, i) => {
+                      const isMastered = userSkills.includes(skill.toLowerCase());
                       return (
-                        <div key={i} className={`flex items-center gap-3 p-4 rounded-xl border transition-transform hover:scale-[1.02] ${s.color}`}>
-                          <div className={`p-1 bg-white dark:bg-slate-800 rounded-md shadow-sm opacity-80`}><Icon size={14} /></div>
-                          <span className={`text-[14px] ${s.weight}`}>{s.status}</span>
+                        <div key={i} className={`flex items-center gap-3 p-4 rounded-xl border transition-transform hover:scale-[1.02] ${isMastered ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200'}`}>
+                          <div className="p-1 bg-white dark:bg-slate-800 rounded-md shadow-sm opacity-80">
+                            {isMastered ? <Check size={14} /> : <X size={14} />}
+                          </div>
+                          <span className="text-[14px] font-bold">{isMastered ? 'Mastered' : 'Missing'}</span>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>

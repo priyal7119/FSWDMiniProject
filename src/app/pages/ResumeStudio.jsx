@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { FileCheck, AlertTriangle, Lightbulb, Download, Upload, CheckCircle, TrendingUp, Zap, Lock, BarChart3, FileText, X } from "lucide-react";
-import { createResume, getStats, analyzeResume } from "../utils/api.js";
+import { FileCheck, AlertTriangle, Lightbulb, Download, Upload, CheckCircle, TrendingUp, Zap, Lock, BarChart3, FileText, X, ChevronRight } from "lucide-react";
+import { createResume, getStats, analyzeResume, getResumes } from "../utils/api.js";
 import { t } from "../utils/translate.js";
 import { useToast } from "../components/Toast.jsx";
 import { jsPDF } from "jspdf";
@@ -17,6 +17,10 @@ export function ResumeStudio() {
   const [resumeScore, setResumeScore] = useState(0);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [resumeHistory, setResumeHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState("builder"); // builder, analysis, history
+  const [analysisResults, setAnalysisResults] = useState(null);
   const { success, error: toastError, info, warning } = useToast();
   
   const [formData, setFormData] = useState({
@@ -38,21 +42,31 @@ export function ResumeStudio() {
       return;
     }
 
-    const fetchResumeData = async () => {
+    const fetchData = async () => {
       try {
-        const stats = await getStats(token);
         setIsLoggedIn(true);
+        const [stats, history] = await Promise.all([
+          getStats(token),
+          getResumes(token)
+        ]);
         setResumeScore(stats.resume_score || 75);
-        setLoading(false);
+        setResumeHistory(history || []);
+        
+        // If there's a recent resume with content, pre-fill the form
+        if (history && history.length > 0 && history[0].content) {
+          try {
+            const savedContent = JSON.parse(history[0].content);
+            setFormData(prev => ({ ...prev, ...savedContent }));
+          } catch(e) { console.error("Error parsing saved resume", e); }
+        }
       } catch (err) {
-        console.error("Error fetching resume stats:", err);
-        setIsLoggedIn(true);
-        setResumeScore(75);
+        console.error("Error fetching data:", err);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchResumeData();
+    fetchData();
   }, [token]);
 
   const handleChange = (e) => {
@@ -69,88 +83,32 @@ export function ResumeStudio() {
       }
       
       try {
-        setLoading(true);
+        setAnalyzing(true);
         info(`Analyzing resume: ${file.name}...`);
         
         const result = await analyzeResume(token, file);
         
+        setAnalysisResults(result);
         setResumeScore(result.score);
         setIsResumeUploaded(true);
         setUploadedFile(file);
+        setActiveTab("analysis"); // Switch to analysis view
         success(`Analysis complete! Score: ${result.score}`);
+        
+        // Refresh history to include this upload if it was saved
+        const history = await getResumes(token);
+        setResumeHistory(history);
       } catch (err) {
         console.error("Upload error:", err);
         toastError(err.message || "Failed to upload and analyze resume");
       } finally {
-        setLoading(false);
+        setAnalyzing(false);
       }
     }
   };
 
-  const generateDynamicAnalysis = () => {
-    if (!isLoggedIn || !isResumeUploaded) {
-      return {
-        score: "--",
-        keywords: [],
-        missingSections: [],
-        improvements: [],
-      };
-    }
-
-    // 1. Dynamic Keywords based on user's actual skills input
-    const extractedKeywords = formData.skills 
-      ? formData.skills.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean).slice(0, 6) 
-      : ["Leadership", "Communication", "Problem Solving"];
-    
-    if (extractedKeywords.length === 0) extractedKeywords.push("Teamwork", "Adaptability", "Time Management");
-
-    // 2. Dynamic Missing Sections based on what's empty
-    const missing = [];
-    if (!formData.achievements || formData.achievements.trim() === "") missing.push("Awards & Recognitions");
-    if (!formData.internships || formData.internships.trim() === "") missing.push("Professional Experience");
-    if (!formData.github && !formData.linkedin) missing.push("Portfolio Links");
-    if (!formData.projects || formData.projects.trim() === "") missing.push("Past Projects");
-    
-    if (missing.length === 0) missing.push("Open Source Contributions", "Certifications");
-
-    // 3. Dynamic Contextual Improvements
-    const improvements = [];
-    
-    // Project context
-    if (formData.projects && formData.projects.length > 5 && !formData.projects.includes('%')) {
-      improvements.push({
-        weak: formData.projects.substring(0, 40) + "...",
-        improved: "Try quantifying this project! Ex: 'Improved load times by 40%' or 'Managed 5 databases'."
-      });
-    } else {
-      improvements.push({
-        weak: "Developed the backend server",
-        improved: "Engineered a scalable Node.js backend architecture supporting 10,000+ daily concurrent users."
-      });
-    }
-
-    // Education context
-    if (formData.education && !formData.education.includes('GPA') && !formData.education.includes('%')) {
-      improvements.push({
-        weak: "Graduated with degree in computer science",
-        improved: "B.S. in Computer Science (3.8 GPA) - Key Coursework: Distributed Systems, Advanced Algorithms."
-      });
-    } else {
-      improvements.push({
-        weak: "Good communication skills",
-        improved: "Facilitated weekly technical syncs across 3 global teams, ensuring 100% milestone alignment."
-      });
-    }
-
-    return {
-      score: resumeScore,
-      keywords: extractedKeywords,
-      missingSections: missing,
-      improvements: improvements,
-    };
-  };
-
-  const analysisData = generateDynamicAnalysis();
+  // Analysis data now comes directly from analysisResults state after upload
+  // or is derived from form completion for the builder
 
   const createPDFDocument = () => {
     const doc = new jsPDF();
@@ -198,15 +156,10 @@ export function ResumeStudio() {
       doc.line(20, yPos, 190, yPos);
       
       // Section Content
-      yPos += 8;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(51, 65, 85); // Slate 700
-      
       const lines = doc.splitTextToSize(content, 170);
       doc.text(lines, 20, yPos);
       
-      yPos += (lines.length * 5) + 12; // Adjusted line height for aesthetics
+      yPos += (lines.length * 5) + 12; 
     };
 
     addAestheticSection("Education", formData.education);
@@ -235,14 +188,24 @@ export function ResumeStudio() {
       return;
     }
     try {
-      const res = await createResume(token, { 
+      const doc = createPDFDocument();
+      // Calculate score based on form completion
+      const completionScore = Math.min(
+        Object.values(formData).filter(v => v && v.length > 5).length * 10,
+        95
+      );
+
+      await createResume(token, { 
         title: formData.fullName || "My Resume",
-        content: JSON.stringify(formData)
+        content: JSON.stringify(formData),
+        analysis_score: { score: completionScore }
       });
       
-      const doc = createPDFDocument();
       doc.save(`${formData.fullName ? formData.fullName.replace(/\s+/g, '_') : 'mapout'}_resume.pdf`);
-
+      
+      // Refresh history
+      const history = await getResumes(token);
+      setResumeHistory(history);
       
       success('Your resume has successfully downloaded.');
     } catch (err) {
@@ -252,7 +215,8 @@ export function ResumeStudio() {
   };
 
   const formatScore = (score) => {
-    return score === "--" ? "--/--" : `${score}/100`;
+    if (score === "--" || !score) return "--/--";
+    return `${score}/100`;
   };
 
   const handleCreateResume = async () => {
@@ -293,351 +257,273 @@ export function ResumeStudio() {
           {isLoggedIn ? t('resumeStudioSubheading', language) : t('resumeStudioSubheading', language)}
         </p>
 
-        {/* Two Column Layout: Resume Builder and Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 auto-rows-max lg:auto-rows-fr">
-          {/* Left Column: Resume Builder Form */}
-          <div className="bg-white dark:bg-slate-800/40 rounded-[10px] p-8 shadow-md flex flex-col border border-transparent dark:border-white/5">
-            <h2 className="mb-6 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Resume Builder
-            </h2>
+        {/* Tab Navigation */}
+        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-white/10">
+          {[
+            { id: "builder", label: "Resume Builder", icon: FileText },
+            { id: "analysis", label: "AI Analysis", icon: Zap },
+            { id: "history", label: "My History", icon: BarChart3 },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-6 py-3 font-bold transition-all ${
+                activeTab === tab.id
+                  ? "border-b-2 border-[var(--mapout-secondary)] text-[var(--mapout-secondary)] bg-blue-50/50 dark:bg-blue-900/10"
+                  : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Main Content Area (8 cols) */}
+          <div className="lg:col-span-8">
             {!isLoggedIn ? (
-              <div className="text-center py-12 flex flex-col items-center justify-center flex-1">
-                <Lock className="w-16 h-16 text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Sign In Required</h3>
-                <p className="text-gray-600 mb-6">Log in to start building your professional resume</p>
+              <div className="bg-white dark:bg-slate-800/40 rounded-xl p-12 shadow-md border border-gray-100 dark:border-white/5 text-center flex flex-col items-center">
+                <Lock className="w-20 h-20 text-gray-300 mb-6" />
+                <h3 className="text-2xl font-bold mb-3">Sign In Required</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">Log in to unlock all professional resume features, AI analysis, and cloud saving.</p>
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-6 py-2 bg-[var(--mapout-secondary)] text-white rounded-md hover:bg-[var(--mapout-primary)] transition-colors font-medium"
+                  className="px-10 py-3 bg-[var(--mapout-secondary)] text-white rounded-xl hover:bg-[var(--mapout-primary)] transition-all font-bold shadow-lg"
                 >
-                  Sign In Now
+                  Get Started
                 </button>
               </div>
             ) : (
-               <form className="space-y-6 flex-1 flex flex-col">
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Full Name</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="John Doe"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="john@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="+1 234 567 8900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">LinkedIn</label>
-                  <input
-                    type="url"
-                    name="linkedin"
-                    value={formData.linkedin}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="linkedin.com/in/johndoe"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">GitHub</label>
-                  <input
-                    type="url"
-                    name="github"
-                    value={formData.github}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="github.com/johndoe"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Education</label>
-                  <textarea
-                    name="education"
-                    value={formData.education}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="B.Tech in Computer Science, XYZ University (2022-2026)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Skills</label>
-                  <textarea
-                    name="skills"
-                    value={formData.skills}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="JavaScript, React, Node.js, Python, SQL"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Projects</label>
-                  <textarea
-                    name="projects"
-                    value={formData.projects}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="Describe your key projects..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Internships</label>
-                  <textarea
-                    name="internships"
-                    value={formData.internships}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="Describe your internship experiences..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Achievements</label>
-                  <textarea
-                    name="achievements"
-                    value={formData.achievements}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--mapout-secondary)] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
-                    placeholder="Awards, certifications, hackathons..."
-                  />
-                </div>
-
-                <div className="mt-auto pt-4 space-y-3 border-t border-gray-200">
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handlePreviewResume}
-                      className="flex-1 px-4 py-3 bg-[var(--mapout-secondary)] text-white rounded-md hover:bg-[var(--mapout-primary)] transition-colors font-medium"
-                    >
-                      Preview Resume
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDownloadPDF}
-                      className="flex-1 px-4 py-3 bg-white border-2 border-[var(--mapout-secondary)] text-[var(--mapout-secondary)] rounded-md hover:bg-[var(--mapout-secondary)] hover:text-white transition-colors flex items-center justify-center gap-2 font-medium"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </form>
-            )}
-          </div>
-
-          {/* Right Column: Resume Analysis & Tips */}
-          <div className="bg-white dark:bg-slate-800/40 rounded-[10px] p-8 shadow-md flex flex-col border border-transparent dark:border-white/5">
-            <h2 className="mb-6 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Analysis & Insights
-            </h2>
-
-            {!isLoggedIn ? (
-              <div className="text-center py-12 flex flex-col items-center justify-center flex-1">
-                <BarChart3 className="w-16 h-16 text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Unlock Analysis Features</h3>
-                <p className="text-gray-600 mb-6">Sign in to get AI-powered resume analysis and recommendations</p>
-                <button
-                  onClick={() => navigate("/login")}
-                  className="px-6 py-2 bg-[var(--mapout-secondary)] text-white rounded-md hover:bg-[var(--mapout-primary)] transition-colors font-medium"
-                >
-                  Sign In Now
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6 flex-1 flex flex-col">
-                {/* Pro Tips Section (Always Visible) */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-5 shadow-sm font-sans">
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
-                    <CheckCircle size={18} />
-                    Pro Tips for Better Resume
-                  </h3>
-                  <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300/90">
-                    <li>• Use action verbs (Developed, Implemented, Designed)</li>
-                    <li>• Quantify achievements (increased by 40%, managed 5 projects)</li>
-                    <li>• Keep it to 1-2 pages maximum</li>
-                    <li>• Use industry keywords from job descriptions</li>
-                    <li>• Maintain consistent formatting and font</li>
-                    <li>• List most recent experience first</li>
-                    <li>• Proofread for grammar and spelling</li>
-                  </ul>
-                </div>
-
-                {/* Upload Feature */}
-                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/5 rounded-lg p-6 shadow-sm">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex justify-between items-center text-lg tracking-tight">
-                    Upload Your Resume
-                    <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/40 text-[var(--mapout-secondary)] dark:text-blue-400 px-2 py-1 rounded-full uppercase tracking-wider">Get Analysis</span>
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 font-medium">Upload an existing PDF to get AI-powered scoring, tailored recommendations, and missing section feedback.</p>
-                  
-                  {uploadedFile ? (
-                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-[var(--mapout-secondary)] dark:border-blue-500 rounded-lg shadow-sm">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-red-100 dark:bg-red-900/30 p-2.5 rounded-lg text-red-600 dark:text-red-400">
-                          <FileText size={28} />
-                        </div>
-                        <div className="overflow-hidden">
-                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate pr-4">{uploadedFile.name}</p>
-                          <p className="text-xs font-semibold text-gray-500 tracking-tight mt-0.5 whitespace-nowrap">
-                            {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB • PDF Document
-                          </p>
-                        </div>
+              <div className="bg-white dark:bg-slate-800/40 rounded-xl p-8 shadow-md border border-gray-100 dark:border-white/5 min-h-[600px]">
+                {activeTab === "builder" && (
+                  <form className="space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="md:col-span-2">
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Full Name</label>
+                        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder-gray-400" placeholder="e.g. Priyal Sharma" />
                       </div>
-                      <button 
-                        onClick={() => {
-                          setUploadedFile(null);
-                          setIsResumeUploaded(false);
-                        }}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0"
-                        title="Remove file"
-                      >
-                        <X size={20} />
+                      <div>
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Email Address</label>
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="john@example.com" />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Phone Number</label>
+                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="+1 (555) 000-0000" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-6 pt-4 border-t border-gray-50 dark:border-white/5">
+                      <div>
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Education</label>
+                        <textarea name="education" value={formData.education} onChange={handleChange} rows={3} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="Master of Science in Computer Science, Stanford University..." />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Technical Skills</label>
+                        <textarea name="skills" value={formData.skills} onChange={handleChange} rows={3} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="React, Node.js, AWS, Kubernetes, Python..." />
+                      </div>
+                      <div>
+                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Professional Experience</label>
+                        <textarea name="internships" value={formData.internships} onChange={handleChange} rows={5} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="Senior Software Engineer at Google..." />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-8">
+                      <button type="button" onClick={handlePreviewResume} className="flex-1 px-6 py-4 bg-[var(--mapout-secondary)] text-white rounded-xl hover:bg-[var(--mapout-primary)] transition-all font-bold shadow-lg flex items-center justify-center gap-2">
+                         <FileText size={20} /> Preview Resume
+                      </button>
+                      <button type="button" onClick={handleDownloadPDF} className="flex-1 px-6 py-4 bg-white border-2 border-[var(--mapout-secondary)] text-[var(--mapout-secondary)] rounded-xl hover:bg-blue-50 transition-all font-bold flex items-center justify-center gap-2">
+                        <Download size={20} /> Download PDF
                       </button>
                     </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center gap-3 px-6 py-6 border-2 border-dashed border-[var(--mapout-secondary)] dark:border-blue-900 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-all group shadow-sm bg-gray-50 dark:bg-slate-900/50 hover:border-blue-500">
-                      <Upload size={28} className="text-[var(--mapout-secondary)] dark:text-blue-400 group-hover:-translate-y-1 transition-transform" />
-                      <span className="text-[var(--mapout-secondary)] dark:text-blue-400 font-bold">Choose PDF File</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">Drag and drop or click to browse</span>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
+                  </form>
+                )}
 
-                {/* Analysis Display */}
-                {isResumeUploaded && (
-                  <div className="mt-2 pt-6 border-t border-gray-100 dark:border-white/5 space-y-6 flex-1 flex flex-col animate-fade-in-up">
-                    <h3 className="font-bold text-2xl mb-2 text-gray-800 dark:text-white tracking-tight">Analysis Results</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Resume Score */}
-                      <div className="bg-[var(--mapout-accent)] dark:bg-slate-700/50 rounded-lg p-5 shadow-sm transform transition hover:-translate-y-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <FileCheck className="text-[var(--mapout-primary)] dark:text-blue-400" size={24} />
-                          <h4 className="text-lg font-bold tracking-tight dark:text-white">Resume Score</h4>
+                {activeTab === "analysis" && (
+                  <div className="space-y-8 animate-fade-in">
+                    <div className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-8 border border-dashed border-gray-300 dark:border-white/10 text-center">
+                      <h3 className="text-xl font-bold mb-4">Live Resume Analyzer</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">Upload your existing PDF to get a deep-dive analysis on keywords, ATS formatting, and impact scoring.</p>
+                      
+                      {uploadedFile ? (
+                        <div className="max-w-md mx-auto p-4 bg-white dark:bg-slate-800 rounded-lg border border-blue-500 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileText className="text-red-500" />
+                            <div className="text-left">
+                              <p className="text-sm font-bold truncate max-w-[200px]">{uploadedFile.name}</p>
+                              <p className="text-xs text-gray-500">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setUploadedFile(null)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
                         </div>
-                        <p className="text-4xl font-bold text-[var(--mapout-primary)] dark:text-blue-400">{formatScore(analysisData.score)}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 font-medium">
-                          {analysisData.score >= 80 ? "Excellent resume! Ready for applications." : "Good progress. See suggestions below."}
-                        </p>
-                      </div>
-
-                      {/* ATS Score */}
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-5 border border-purple-200 dark:border-purple-800/40 shadow-sm transform transition hover:-translate-y-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Zap className="text-purple-600 dark:text-purple-400" size={24} />
-                          <h4 className="text-lg font-bold tracking-tight dark:text-white">ATS Compatibility</h4>
-                        </div>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <p className="text-4xl font-bold text-purple-600 dark:text-purple-400">87%</p>
-                        </div>
-                        <p className="text-sm text-purple-700 dark:text-purple-300/90 mt-2 font-medium">Optimized for applicant tracking systems</p>
-                      </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center cursor-pointer group">
+                          <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <Upload className="text-[var(--mapout-secondary)]" size={32} />
+                          </div>
+                          <span className="font-bold text-[var(--mapout-secondary)]">Click to upload PDF</span>
+                          <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+                        </label>
+                      )}
                     </div>
 
-                    {/* Keyword Suggestions */}
-                    {analysisData.keywords.length > 0 && (
-                      <div className="bg-[var(--mapout-mint)] dark:bg-green-900/10 rounded-lg p-5 shadow-sm border border-transparent dark:border-green-900/20">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Lightbulb className="text-[var(--mapout-primary)] dark:text-green-400" size={24} />
-                          <h4 className="text-lg font-bold dark:text-white">Keywords Found</h4>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {analysisData.keywords.map((keyword, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-white dark:bg-slate-800 px-3 py-1 rounded-full text-sm text-[var(--mapout-primary)] dark:text-green-400 font-bold shadow-sm border border-green-100 dark:border-white/5 tracking-wide"
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
+                    {analyzing && (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="font-bold text-blue-500 tracking-widest uppercase text-xs">AI is scanning your document...</p>
                       </div>
                     )}
 
-                    {/* Missing Sections */}
-                    {analysisData.missingSections.length > 0 && (
-                      <div className="bg-[var(--mapout-pink)] dark:bg-red-900/10 rounded-lg p-5 shadow-sm border border-transparent dark:border-red-900/20">
-                        <div className="flex items-center gap-3 mb-2">
-                          <AlertTriangle className="text-[var(--mapout-primary)] dark:text-red-400" size={24} />
-                          <h4 className="text-lg font-bold dark:text-white">Missing Sections</h4>
-                        </div>
-                        <ul className="mt-3 space-y-2 pl-1">
-                          {analysisData.missingSections.map((section, idx) => (
-                            <li key={idx} className="text-sm text-red-700 dark:text-red-400 font-bold">
-                              • {section}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Improvement Suggestions */}
-                    {analysisData.improvements.length > 0 && (
-                      <div className="flex-1 mt-2">
-                        <h4 className="mb-4 font-bold flex items-center gap-2 text-xl dark:text-white tracking-tight">
-                          <TrendingUp size={22} className="text-[var(--mapout-secondary)]" />
-                          Improvement Suggestions
-                        </h4>
-                        <div className="space-y-4">
-                          {analysisData.improvements.map((item, idx) => (
-                            <div key={idx} className="border border-gray-200 dark:border-white/5 rounded-lg p-5 bg-white dark:bg-slate-900 shadow-sm border-l-4 border-l-[var(--mapout-secondary)]">
-                              <div className="mb-4">
-                                <span className="text-xs font-bold text-red-600 bg-red-100 dark:bg-red-900/40 px-2 py-1.5 rounded uppercase tracking-wider inline-block mb-2">Needs Work</span>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 italic">"{item.weak}"</p>
-                              </div>
-                              <div className="bg-gray-50 dark:bg-slate-800/50 rounded p-3 border border-gray-100 dark:border-white/5">
-                                <span className="text-xs font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2 py-1.5 rounded uppercase tracking-wider inline-block mb-2">Recommended Betterment</span>
-                                <p className="text-sm text-gray-900 dark:text-white font-bold tracking-tight">"{item.improved}"</p>
-                              </div>
+                    {isResumeUploaded && analysisResults && (
+                      <div className="space-y-8 animate-slide-up">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl">
+                            <div className="flex justify-between items-end mb-2">
+                              <span className="text-sm font-bold uppercase text-blue-800 dark:text-blue-300">Overall Score</span>
+                              <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{analysisResults.score}%</span>
                             </div>
-                          ))}
+                            <div className="h-3 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${analysisResults.score}%` }}></div>
+                            </div>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl">
+                            <div className="flex justify-between items-end mb-2">
+                              <span className="text-sm font-bold uppercase text-purple-800 dark:text-purple-300">ATS Compatibility</span>
+                              <span className="text-3xl font-black text-purple-600 dark:text-purple-400">{analysisResults.ats_compatibility}%</span>
+                            </div>
+                            <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded-full overflow-hidden">
+                              <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${analysisResults.ats_compatibility}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-bold text-lg flex items-center gap-2">
+                            <Zap size={18} className="text-yellow-500" /> Key Strengths Found
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {analysisResults.keywords.map((kw, i) => (
+                              <span key={i} className="px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg text-sm font-bold border border-green-100 dark:border-green-900/30">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-bold text-lg flex items-center gap-2">
+                            <TrendingUp size={18} className="text-blue-500" /> Improvement Suggestions
+                          </h4>
+                          <div className="space-y-3">
+                            {analysisResults.missing.map((item, i) => (
+                              <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg">
+                                <AlertTriangle className="text-yellow-500" size={20} />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Consider adding more evidence of <strong>{item}</strong> proficiency.</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
+
+                {activeTab === "history" && (
+                   <div className="space-y-6 animate-fade-in">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold">Your Saved Resumes</h3>
+                        <span className="text-xs font-bold px-3 py-1 bg-gray-100 dark:bg-slate-800 rounded-full">{resumeHistory.length} Resumes Saved</span>
+                      </div>
+                      
+                      {resumeHistory.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-4">
+                          {resumeHistory.map((res, i) => (
+                            <div key={i} className="p-6 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-white/5 flex items-center justify-between hover:border-blue-500/50 transition-all cursor-pointer group" onClick={() => {
+                              if (res.content) {
+                                setFormData(JSON.parse(res.content));
+                                setActiveTab("builder");
+                                success("Resume loaded into editor!");
+                              }
+                            }}>
+                              <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                  <FileText className="text-blue-500" size={24} />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-500 transition-colors">{res.title}</p>
+                                  <p className="text-xs text-gray-500">{new Date(res.created_at).toLocaleDateString()} • {res.analysis_score?.score || 75}% Score</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className={`px-4 py-1.5 rounded-full text-xs font-black ${(res.analysis_score?.score || 75) > 80 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {res.analysis_score?.score || 75}/100
+                                </div>
+                                <ChevronRight className="text-gray-300 group-hover:text-blue-500 transition-all" size={20} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-20 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
+                          <FileText className="mx-auto text-gray-200 mb-4" size={48} />
+                          <p className="text-gray-500 font-medium">No resumes saved yet. Build your first one!</p>
+                        </div>
+                      )}
+                   </div>
+                )}
               </div>
             )}
+          </div>
+
+          {/* Sidebar Area (4 cols) */}
+          <div className="lg:col-span-4 space-y-8">
+             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-md">
+                    <Lightbulb size={24} />
+                  </div>
+                  <h3 className="font-bold text-lg tracking-tight">Pro Mastery Tips</h3>
+                </div>
+                <div className="space-y-4 text-sm font-medium text-blue-50/90 leading-relaxed">
+                  <div className="flex gap-3">
+                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">01</span>
+                    <p>Use <strong>Action Verbs</strong> (Architected, Orchestrated, Spearheaded) to start bullet points.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">02</span>
+                    <p>Quantify everything. <em>"Increased speed by 40%"</em> beats <em>"Made it fast"</em>.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">03</span>
+                    <p>Mirror the job description keywords for <strong>ATS Optimization</strong>.</p>
+                  </div>
+                </div>
+             </div>
+
+             <div className="bg-white dark:bg-slate-800/40 rounded-xl p-6 shadow-md border border-gray-100 dark:border-white/5">
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <TrendingUp size={18} className="text-green-500" /> Your Impact Score
+                </h3>
+                <div className="flex items-center gap-6 mb-6">
+                  <div className="relative w-20 h-20 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100 dark:text-slate-900" />
+                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={213} strokeDashoffset={213 - (213 * resumeScore / 100)} className="text-blue-500" />
+                    </svg>
+                    <span className="absolute text-xl font-black text-slate-800 dark:text-white">{resumeScore}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 dark:text-gray-200">Current Standing</p>
+                    <p className="text-xs text-gray-500 font-medium">{resumeScore > 80 ? "Top 5% Expert" : resumeScore > 60 ? "Strategic Professional" : "Growth Stage"}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab("analysis")}
+                  className="w-full py-2.5 text-blue-600 dark:text-blue-400 font-bold text-sm bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  Deep Analysis Report
+                </button>
+             </div>
           </div>
         </div>
       </div>

@@ -27,8 +27,9 @@ export function Profile() {
           ...profile,
           skillsLearned: stats.skills_learned,
           projectsCompleted: stats.milestones_completed,
-          interviewsPrepped: 8,
-          achievements: ["Quick Learner", "Resume Master"],
+          interviewsPrepped: stats.interviews_prepped,
+          achievements: (stats.achievements && stats.achievements.length > 0) ? stats.achievements : ["Early Adopter", "Explorer"],
+          joinDate: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "April 2026"
         });
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -181,7 +182,7 @@ export function Profile() {
                     <Mail size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 font-bold uppercase">Email</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Email</p>
                     <p className="text-sm font-bold text-slate-900 dark:text-gray-200">{userStats.email}</p>
                   </div>
                 </div>
@@ -190,7 +191,7 @@ export function Profile() {
                     <Phone size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 font-bold uppercase">Phone</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Phone</p>
                     <p className="text-sm font-bold text-slate-900 dark:text-gray-200">{userStats.phone}</p>
                   </div>
                 </div>
@@ -199,7 +200,7 @@ export function Profile() {
                     <MapPin size={20} />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 font-bold uppercase">Location</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Location</p>
                     <p className="text-sm font-bold text-slate-900 dark:text-gray-200">{userStats.location}</p>
                   </div>
                 </div>
@@ -235,15 +236,15 @@ export function Profile() {
                   <p className="text-4xl font-extrabold text-blue-700 dark:text-blue-400">{userStats.interviewsPrepped}</p>
                 </div>
                 <div className="bg-emerald-600/5 dark:bg-emerald-600/10 rounded-2xl p-6 border border-emerald-600/10">
-                  <p className="text-xs text-emerald-600 font-bold uppercase mb-2 tracking-widest">Skills</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase mb-2 tracking-widest">Skills</p>
                   <p className="text-4xl font-extrabold text-emerald-700 dark:text-emerald-400">{userStats.skillsLearned}</p>
                 </div>
                 <div className="bg-indigo-600/5 dark:bg-indigo-600/10 rounded-2xl p-6 border border-indigo-600/10">
-                  <p className="text-xs text-indigo-600 font-bold uppercase mb-2 tracking-widest">Projects</p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase mb-2 tracking-widest">Projects</p>
                   <p className="text-4xl font-extrabold text-indigo-700 dark:text-indigo-400">{userStats.projectsCompleted}</p>
                 </div>
                 <div className="bg-orange-600/5 dark:bg-orange-600/10 rounded-2xl p-6 border border-orange-600/10">
-                  <p className="text-xs text-orange-600 font-bold uppercase mb-2 tracking-widest">Resume</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-bold uppercase mb-2 tracking-widest">Resume</p>
                   <p className="text-4xl font-extrabold text-orange-700 dark:text-orange-400">{userStats.resumeScore}%</p>
                 </div>
               </div>

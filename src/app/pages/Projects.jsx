@@ -21,6 +21,34 @@ export function Projects() {
   const token = localStorage.getItem("token");
   const { success, error: toastError, warning } = useToast();
 
+  // DYNAMIC PROJECT GENERATOR - Varies user to user based on role!
+  const generateUserTailoredProjects = (role) => {
+    if (role.includes("Data") || role.includes("ML") || role.includes("AI")) {
+      return [
+        { id: 101, title: "Predictive Analytics Engine", skills: ["Python", "TensorFlow", "Pandas"], difficulty: "Advanced", technology: "Python", domain: "AI/ML", description: "Design an algorithmic pipeline that forecasts trends based on multi-variate continuous time-series data." },
+        { id: 102, title: "NLP Sentiment Analyzer", skills: ["PyTorch", "NLTK", "Scikit"], difficulty: "Intermediate", technology: "Python", domain: "AI/ML", description: "Create a natural language processing model that scores live customer feedback streams." },
+        { id: 103, title: "Data Visualization Dashboard", skills: ["Python", "Plotly", "Dash"], difficulty: "Beginner", technology: "Python", domain: "Data Science", description: "Build an interactive dashboard to visualize and analyze complex datasets." },
+      ];
+    } else if (role.includes("Backend") || role.includes("DevOps") || role.includes("Cyber")) {
+      return [
+        { id: 201, title: "Microservices Architecture", skills: ["Node.js", "Docker", "Kubernetes"], difficulty: "Advanced", technology: "Backend", domain: "Web Development", description: "Architect a resilient system using clustered stateless containers connected via RabbitMQ." },
+        { id: 202, title: "RESTful Authentication API", skills: ["Express", "JWT", "PostgreSQL"], difficulty: "Intermediate", technology: "Backend", domain: "Web Development", description: "Develop a high-security user authentication API featuring cryptographic hashing and token issuance." },
+        { id: 203, title: "High-Traffic Cache Proxy", skills: ["Redis", "Nginx", "Go"], difficulty: "Advanced", technology: "Backend", domain: "Web Development", description: "Engineer an ultra-fast caching layer that securely intercepts and caches database query payloads." },
+      ];
+    } else if (role.includes("Frontend") || role.includes("UI")) {
+      return [
+        { id: 301, title: "Interactive Canvas Application", skills: ["React", "HTML5 Canvas", "Framer Motion"], difficulty: "Advanced", technology: "Frontend", domain: "Web Development", description: "Develop an advanced browser-based drawing application using pure mathematics and matrix transforms." },
+        { id: 302, title: "E-Commerce Storefront", skills: ["Next.js", "Tailwind CSS", "Redux"], difficulty: "Intermediate", technology: "Frontend", domain: "Web Development", description: "Build a blistering fast digital storefront utilizing Server Side Rendering and modern CSS grids." },
+        { id: 303, title: "Realtime WebSocket Dashboard", skills: ["React", "Socket.IO", "Chart.js"], difficulty: "Intermediate", technology: "Frontend", domain: "Web Development", description: "Create a live monitoring system that renders streaming data utilizing bidirectional WebSockets." },
+      ];
+    } else {
+       return [
+        { id: 401, title: "Full-Stack Task Manager", skills: ["React", "Node", "MongoDB"], difficulty: "Intermediate", technology: "Full Stack", domain: "Web Development", description: "Develop a comprehensive end-to-end management board featuring CRUD and authentication." },
+        { id: 402, title: "Cross-Platform Mobile App", skills: ["React Native", "Firebase", "Zustand"], difficulty: "Advanced", technology: "Mobile", domain: "Mobile Development", description: "Implement a hybrid mobile framework that targets iOS and Android simultaneously." }
+      ];
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -29,42 +57,15 @@ export function Projects() {
 
     const fetchProjects = async () => {
       try {
+        setLoading(true);
         const [projectsData, bookmarksData, roadmap] = await Promise.all([
-          getRecommendedProjects(),
+          getRecommendedProjects(filters),
           getBookmarks(),
           getRoadmap().catch(() => null)
         ]);
         
         const userRole = roadmap?.target_role || "Full Stack Developer";
         
-        // DYNAMIC PROJECT GENERATOR - Varies user to user based on role!
-        const generateUserTailoredProjects = (role) => {
-          if (role.includes("Data") || role.includes("ML") || role.includes("AI")) {
-            return [
-              { id: 101, title: "Predictive Analytics Engine", skills: ["Python", "TensorFlow", "Pandas"], difficulty: "Advanced", technology: "Python", domain: "AI/ML", description: "Design an algorithmic pipeline that forecasts trends based on multi-variate continuous time-series data." },
-              { id: 102, title: "NLP Sentiment Analyzer", skills: ["PyTorch", "NLTK", "Scikit"], difficulty: "Intermediate", technology: "Python", domain: "AI/ML", description: "Create a natural language processing model that scores live customer feedback streams." },
-              { id: 103, title: "Data Visualization Dashboard", skills: ["Python", "Plotly", "Dash"], difficulty: "Beginner", technology: "Python", domain: "Data Science", description: "Build an interactive dashboard to visualize and analyze complex datasets." },
-            ];
-          } else if (role.includes("Backend") || role.includes("DevOps") || role.includes("Cyber")) {
-            return [
-              { id: 201, title: "Microservices Architecture", skills: ["Node.js", "Docker", "Kubernetes"], difficulty: "Advanced", technology: "Backend", domain: "Web Development", description: "Architect a resilient system using clustered stateless containers connected via RabbitMQ." },
-              { id: 202, title: "RESTful Authentication API", skills: ["Express", "JWT", "PostgreSQL"], difficulty: "Intermediate", technology: "Backend", domain: "Web Development", description: "Develop a high-security user authentication API featuring cryptographic hashing and token issuance." },
-              { id: 203, title: "High-Traffic Cache Proxy", skills: ["Redis", "Nginx", "Go"], difficulty: "Advanced", technology: "Backend", domain: "Web Development", description: "Engineer an ultra-fast caching layer that securely intercepts and caches database query payloads." },
-            ];
-          } else if (role.includes("Frontend") || role.includes("UI")) {
-            return [
-              { id: 301, title: "Interactive Canvas Application", skills: ["React", "HTML5 Canvas", "Framer Motion"], difficulty: "Advanced", technology: "Frontend", domain: "Web Development", description: "Develop an advanced browser-based drawing application using pure mathematics and matrix transforms." },
-              { id: 302, title: "E-Commerce Storefront", skills: ["Next.js", "Tailwind CSS", "Redux"], difficulty: "Intermediate", technology: "Frontend", domain: "Web Development", description: "Build a blistering fast digital storefront utilizing Server Side Rendering and modern CSS grids." },
-              { id: 303, title: "Realtime WebSocket Dashboard", skills: ["React", "Socket.IO", "Chart.js"], difficulty: "Intermediate", technology: "Frontend", domain: "Web Development", description: "Create a live monitoring system that renders streaming data utilizing bidirectional WebSockets." },
-            ];
-          } else {
-             return [
-              { id: 401, title: "Full-Stack Task Manager", skills: ["React", "Node", "MongoDB"], difficulty: "Intermediate", technology: "Full Stack", domain: "Web Development", description: "Develop a comprehensive end-to-end management board featuring CRUD and authentication." },
-              { id: 402, title: "Cross-Platform Mobile App", skills: ["React Native", "Firebase", "Zustand"], difficulty: "Advanced", technology: "Mobile", domain: "Mobile Development", description: "Implement a hybrid mobile framework that targets iOS and Android simultaneously." }
-            ];
-          }
-        };
-
         const tailoring = generateUserTailoredProjects(userRole);
         const processedProjects = (Array.isArray(projectsData) ? projectsData : []).map(p => ({
           ...p,
@@ -74,22 +75,19 @@ export function Projects() {
           domain: p.domain || "Web Development",
         }));
         
-        // Use API projects enriched with metadata, or fallback to tailored generator
         setProjectList(processedProjects.length > 0 ? processedProjects : tailoring);
         
-        // Set bookmarked project IDs
         const bookmarkedIds = new Set(bookmarksData?.map(b => b.resource_id) || []);
         setBookmarkedProjects(bookmarkedIds);
       } catch (err) {
         console.error("Error fetching projects:", err);
-        // Remove the hardcoded array completely and rely strictly on user tailoring
       } finally {
         setLoading(false);
       }
     };
 
     fetchProjects();
-  }, [token, navigate]);
+  }, [token, navigate, filters]);
 
   const handleBookmark = async (project) => {
     if (!token) {

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Zap, BookOpen, Award, Target, ClipboardList, Code, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Zap, BookOpen, Award, Target, ClipboardList, Code, Search, Rocket } from "lucide-react";
 import { t } from "../utils/translate.js";
-import { getRoadmap } from "../utils/api.js";
+import { getRoadmap, api } from "../utils/api.js";
 
 export function InterviewFAQs() {
   const [selectedRole, setSelectedRole] = useState("Frontend Developer");
   const [language, setLanguage] = useState(localStorage.getItem("language") || "English");
   const [openQuestions, setOpenQuestions] = useState({});
+  const [dynamicQuestions, setDynamicQuestions] = useState([]);
+  const [isPrepping, setIsPrepping] = useState(false);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -14,19 +16,28 @@ export function InterviewFAQs() {
   }, [language]);
 
   useEffect(() => {
-    if (!token) return;
-    const fetchRole = async () => {
+    const fetchRoleAndQuestions = async () => {
       try {
         const roadmap = await getRoadmap();
         if (roadmap && roadmap.target_role) {
           setSelectedRole(roadmap.target_role);
+          const q = await api.interview.getQuestions(roadmap.target_role);
+          setDynamicQuestions(q);
         }
       } catch (err) {
         console.error("Error fetching role:", err);
       }
     };
-    fetchRole();
+    fetchRoleAndQuestions();
   }, [token]);
+
+  useEffect(() => {
+    const fetchQ = async () => {
+      const q = await api.interview.getQuestions(selectedRole);
+      setDynamicQuestions(q);
+    };
+    fetchQ();
+  }, [selectedRole]);
 
   const roles = [
     "Frontend Developer", "Backend Developer", "Full Stack Developer",
@@ -179,6 +190,34 @@ export function InterviewFAQs() {
           </div>
         </div>
 
+        {/* MOCK INTERVIEW START */}
+        <div className="mb-12 bg-white dark:bg-slate-900 rounded-3xl p-10 border-2 border-blue-500/20 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-blue-500/40 transition-all">
+          <div className="flex items-center gap-6">
+             <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/30 group-hover:rotate-6 transition-transform">
+               <Rocket size={40} />
+             </div>
+             <div>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Ready for a Simulation?</h2>
+              <p className="text-slate-600 dark:text-slate-400 font-medium tracking-tight max-w-md">Launch a professional timed mock interview for <span className="text-blue-500 font-bold">{selectedRole}</span>. We'll simulate technical challenges and evaluate your STAR responses.</p>
+             </div>
+          </div>
+          <button 
+            onClick={async () => {
+              setIsPrepping(true);
+              await api.interview.incrementPrepCount();
+              setTimeout(() => {
+                setIsPrepping(false);
+                window.open("https://meet.google.com/new", "_blank");
+              }, 1500);
+            }}
+            disabled={isPrepping}
+            className={`px-12 py-5 bg-slate-900 dark:bg-blue-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-500/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-4 text-lg ${isPrepping ? 'opacity-70 animate-pulse' : ''}`}
+          >
+            {isPrepping ? "Provisioning Agent..." : "Deploy Mock Session"}
+            <ChevronDown size={20} className="-rotate-90" />
+          </button>
+        </div>
+
         {/* Role Selection Dropdown */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm mb-12 border border-slate-100 dark:border-white/5">
           <label className="block mb-4 font-bold text-slate-800 dark:text-slate-200 text-lg">Target Career Role</label>
@@ -209,7 +248,7 @@ export function InterviewFAQs() {
             </h2>
           </div>
           <div className="space-y-4">
-            {(technicalQuestions[selectedRole] || technicalQuestions["Frontend Developer"]).map((item, idx) => {
+            {([...(technicalQuestions[selectedRole] || technicalQuestions["Frontend Developer"]), ...dynamicQuestions]).map((item, idx) => {
               const isOpen = openQuestions[`technical-${idx}`];
               return (
                 <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:shadow-md">

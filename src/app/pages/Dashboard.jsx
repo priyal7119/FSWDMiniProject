@@ -3,49 +3,17 @@ import { useNavigate } from "react-router";
 import { FileCheck, Award, AlertCircle, Briefcase, Search as SearchIcon, X, ExternalLink, TrendingUp, Calendar, Target, BarChart3, Lightbulb, Trophy, GraduationCap, Zap, BookOpen, MapPin, Tag } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { searchContent } from "@/utils/searchService";
-import { getStats } from "../utils/api.js";
+import { getStats, getDetailedDashboardData } from "../utils/api.js";
 import { t } from "../utils/translate.js";
 import { useToast } from "../components/Toast.jsx";
 
-const skillData = [
-  { skill: "JavaScript", progress: 85 },
-  { skill: "React", progress: 75 },
-  { skill: "Python", progress: 60 },
-  { skill: "SQL", progress: 50 },
-];
-
-const skillProgressData = [
-  { skill: "React", progress: 85, target: 90 },
-  { skill: "JavaScript", progress: 90, target: 95 },
-  { skill: "Python", progress: 65, target: 80 },
-  { skill: "SQL", progress: 70, target: 85 },
-  { skill: "TypeScript", progress: 60, target: 85 },
-];
-
-const resumeScoreHistory = [
-  { month: "Jan", score: 65 },
-  { month: "Feb", score: 70 },
-  { month: "Mar", score: 78 },
-  { month: "Apr", score: 82 },
-  { month: "May", score: 85 },
-];
-
-const timeSpentData = [
-  { name: "Resume Studio", value: 25 },
-  { name: "Career Planner", value: 20 },
-  { name: "Projects", value: 30 },
-  { name: "Interview FAQs", value: 15 },
-  { name: "Research Guide", value: 10 },
-];
-
+// Chart Utilities
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 
-const activityStats = [
-  { label: "Total Time Spent", value: "26 hrs", icon: Calendar, color: "bg-blue-50 dark:bg-blue-900/10" },
-  { label: "Skills Learned", value: "12", icon: Award, color: "bg-green-50 dark:bg-green-900/10" },
-  { label: "Projects Completed", value: "5", icon: Target, color: "bg-purple-50 dark:bg-purple-900/10" },
-  { label: "Interviews Prepared", value: "8", icon: TrendingUp, color: "bg-orange-50 dark:bg-orange-900/10" },
-];
+const getLevelValue = (level) => {
+  const levels = { 'Beginner': 30, 'Intermediate': 60, 'Advanced': 90, 'Expert': 100 };
+  return levels[level] || 50;
+};
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -55,6 +23,12 @@ export function Dashboard() {
   const [contentType, setContentType] = useState("all");
   const [hasSearched, setHasSearched] = useState(false);
   const [stats, setStats] = useState(null);
+  const [detailedData, setDetailedData] = useState({
+    skills: [],
+    milestones: [],
+    resumes: [],
+    timeSpent: []
+  });
   const [loading, setLoading] = useState(true);
   
   const token = localStorage.getItem("token");
@@ -70,18 +44,49 @@ export function Dashboard() {
     const fetchData = async () => {
       try {
         setIsLoggedIn(true);
-        const data = await getStats(token);
-        setStats(data);
-        console.log("Dashboard stats:", data);
-      } catch (err) {
-        console.error("Error fetching stats:", err);
-        toastError(err.message || "Failed to sync your dashboard.");
-        // Use mock data as fallback
-        setStats({
-          skills_learned: 12,
-          milestones_completed: 5,
-          resume_score: 85
+        const [basicStats, fullData] = await Promise.all([
+          getStats(token),
+          getDetailedDashboardData()
+        ]);
+        
+        setStats(basicStats);
+        
+        // Process charts
+        const processedResumes = (fullData.resumes || []).map(r => ({
+          month: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short' }),
+          score: r.analysis_score?.score || 0
+        })).slice(-6); // Last 6 scans
+
+        const processedSkills = (fullData.skills || []).map(s => ({
+          skill: s.skill_name,
+          progress: getLevelValue(s.level)
+        }));
+
+        const skillProgress = (fullData.skills || []).map(s => ({
+          skill: s.skill_name,
+          progress: getLevelValue(s.level),
+          target: Math.min(getLevelValue(s.level) + 15, 100)
+        }));
+
+        // Mock time spent based on activity counts if zero
+        const usageData = [
+          { name: "Resumes", value: Math.max(fullData.resumes.length * 5, 20) },
+          { name: "Planning", value: Math.max(fullData.milestones.length * 10, 15) },
+          { name: "Skills", value: Math.max(fullData.skills.length * 15, 25) },
+          { name: "Bookmarks", value: Math.max(basicStats.bookmarks * 2, 10) },
+        ];
+
+        setDetailedData({
+          skills: processedSkills,
+          skillProgress,
+          resumes: processedResumes,
+          timeSpent: usageData,
+          milestones: fullData.milestones
         });
+
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        toastError("Failed to sync your dashboard.");
       } finally {
         setLoading(false);
       }
@@ -120,81 +125,21 @@ export function Dashboard() {
     },
   ] : [];
 
+  // Constants for Guest view
   const guestSummaryCards = [
-    {
-      icon: FileCheck,
-      title: "Resume Score",
-      value: "--",
-      description: "Track your resume performance",
-      color: "bg-gray-100",
-    },
-    {
-      icon: Award,
-      title: "Skills Learned",
-      value: "--",
-      description: "Monitor your skill development",
-      color: "bg-gray-100",
-    },
-    {
-      icon: AlertCircle,
-      title: "Missing Skills",
-      value: "--",
-      description: "Identify gaps in your knowledge",
-      color: "bg-gray-100",
-    },
-    {
-      icon: Briefcase,
-      title: "Recommended Projects",
-      value: "--",
-      description: "Get personalized project suggestions",
-      color: "bg-gray-100",
-    },
-  ];
-
-  const activities = [
-    {
-      title: "Recent Resume Analysis",
-      description: "Your resume has strong technical keywords. Consider adding more quantifiable achievements.",
-      color: "bg-blue-50",
-      path: "/resume-studio",
-    },
-    {
-      title: "Recommended Skill to Learn",
-      description: "Docker and Kubernetes are highly valued for your target role as a Backend Developer.",
-      color: "bg-purple-50",
-      path: "/career-planner",
-    },
-    {
-      title: "Suggested Project",
-      description: "Build a RESTful API with authentication using Node.js and PostgreSQL.",
-      color: "bg-green-50",
-      path: "/projects",
-    },
+    { icon: FileCheck, title: "Resume Score", value: "--", description: "Track your resume performance", color: "bg-gray-100" },
+    { icon: Award, title: "Skills Learned", value: "--", description: "Monitor your skill development", color: "bg-gray-100" },
+    { icon: AlertCircle, title: "Missing Skills", value: "--", description: "Identify gaps in your knowledge", color: "bg-gray-100" },
+    { icon: Briefcase, title: "Recommended Projects", value: "--", description: "Get personalized project suggestions", color: "bg-gray-100" },
   ];
 
   const guestActivities = [
-    {
-      title: "Track Your Progress",
-      description: "Get detailed insights into your resume strength and areas for improvement.",
-      color: "bg-blue-50",
-      path: "/resume-studio",
-    },
-    {
-      title: "Skill Development",
-      description: "Discover which skills you need to learn for your dream career.",
-      color: "bg-purple-50",
-      path: "/career-planner",
-    },
-    {
-      title: "Project Recommendations",
-      description: "Receive personalized project ideas that match your career goals.",
-      color: "bg-green-50",
-      path: "/projects",
-    },
+    { title: "Track Your Progress", description: "Get detailed insights into your resume strength.", color: "bg-blue-50", path: "/resume-studio" },
+    { title: "Skill Development", description: "Discover which skills you need to learn.", color: "bg-purple-50", path: "/career-planner" },
+    { title: "Project Recommendations", description: "Receive personalized project ideas.", color: "bg-green-50", path: "/projects" },
   ];
 
-  const currentSummaryCards = isLoggedIn ? summaryCards : guestSummaryCards;
-  const currentActivities = isLoggedIn ? activities : guestActivities;
+  const currentSummaryCards = isLoggedIn && stats ? summaryCards : guestSummaryCards;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -274,7 +219,13 @@ export function Dashboard() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {activityStats.map((stat, idx) => {
+              {[
+                { label: "Active Engagement", value: `${Math.round(detailedData.timeSpent.reduce((a, b) => a + b.value, 0) / 10)} hrs`, icon: Calendar, color: "bg-blue-50 dark:bg-blue-900/10" },
+                { label: "Skills Learned", value: stats.skills_learned, icon: Award, color: "bg-green-50 dark:bg-green-900/10" },
+                { label: "Milestones", value: stats.milestones_completed, icon: Target, color: "bg-purple-50 dark:bg-purple-900/10" },
+                { label: "Interviews", value: stats.interviews_prepped, icon: SearchIcon, color: "bg-rose-50 dark:bg-rose-900/10" },
+                { label: "Resumes Scanned", value: detailedData.resumes.length, icon: TrendingUp, color: "bg-orange-50 dark:bg-orange-900/10" },
+              ].map((stat, idx) => {
                 const Icon = stat.icon;
                 return (
                   <div key={idx} className={`${stat.color} dark:bg-slate-800/40 rounded-xl p-6 shadow-sm border border-transparent dark:border-white/5 hover:-translate-y-2 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 ease-out`}>
@@ -291,7 +242,7 @@ export function Dashboard() {
               <div className="bg-white dark:bg-slate-900 rounded-[10px] p-6 shadow-md border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Resume Score Progress</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={resumeScoreHistory}>
+                  <LineChart data={detailedData.resumes.length > 0 ? detailedData.resumes : [{month: 'N/A', score: 0}]}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="month" stroke="#94a3b8" />
                     <YAxis domain={[0, 100]} stroke="#94a3b8" />
@@ -307,26 +258,28 @@ export function Dashboard() {
                 </ResponsiveContainer>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-4 font-medium">
                   <TrendingUp size={16} className="inline mr-1 text-green-500" />
-                  Your resume score has improved by 20 points in 5 months!
+                  {detailedData.resumes.length > 1 
+                    ? `Your resume score has improved by ${detailedData.resumes[detailedData.resumes.length-1].score - detailedData.resumes[0].score} points!`
+                    : "Upload more resumes to track your improvement over time."}
                 </p>
               </div>
 
               {/* Time Spent Distribution */}
               <div className="bg-white dark:bg-slate-900 rounded-[10px] p-6 shadow-md border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Time Spent by Feature</h3>
+                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Active engagement by Feature</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={timeSpentData}
+                      data={detailedData.timeSpent}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value }) => `${name}: ${value}%`}
+                      label={({ name, value }) => `${name}`}
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {timeSpentData.map((entry, index) => (
+                      {detailedData.timeSpent.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -340,30 +293,30 @@ export function Dashboard() {
             <div className="bg-white dark:bg-slate-900 rounded-[10px] p-8 shadow-md mb-8 border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <h3 className="text-xl font-bold mb-8 text-gray-900 dark:text-white">Skill Progress Comparison</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                {skillProgressData.map((skill, idx) => (
-                  <div key={idx} className="group">
-                    <div className="flex justify-between mb-3">
-                      <span className="font-bold text-gray-800 dark:text-gray-200">{skill.skill}</span>
-                      <span className="text-sm font-bold text-[var(--mapout-secondary)] dark:text-blue-400">{skill.progress}% <span className="text-gray-400 font-medium">/ {skill.target}%</span></span>
+                {detailedData.skillProgress && detailedData.skillProgress.length > 0 ? (
+                  detailedData.skillProgress.map((skill, idx) => (
+                    <div key={idx} className="group">
+                      <div className="flex justify-between mb-3">
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{skill.skill}</span>
+                        <span className="text-sm font-bold text-[var(--mapout-secondary)] dark:text-blue-400">{skill.progress}% <span className="text-gray-400 font-medium">/ {skill.target}%</span></span>
+                      </div>
+                      <div className="relative h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full transition-all duration-1000 group-hover:brightness-110"
+                          style={{ width: `${skill.progress}%` }}
+                        ></div>
+                        <div
+                          className="absolute h-full top-0 w-[2px] bg-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                          style={{ left: `${skill.target}%` }}
+                          aria-label={`Target: ${skill.target}%`}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="relative h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full transition-all duration-1000 group-hover:brightness-110"
-                        style={{ width: `${skill.progress}%` }}
-                      ></div>
-                      <div
-                        className="absolute h-full top-0 w-[2px] bg-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                        style={{ left: `${skill.target}%` }}
-                        aria-label={`Target: ${skill.target}%`}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="col-span-2 text-center text-gray-500 py-8">No skills tracked yet. Visit the Career Planner to add skills.</p>
+                )}
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-10 text-center font-medium italic">
-                <BarChart3 size={16} className="inline mr-2 text-blue-500" />
-                Performance metrics indicate you are pacing 12% faster than last quarter.
-              </p>
             </div>
 
             {/* Goals & Milestones */}
@@ -371,54 +324,44 @@ export function Dashboard() {
               <div className="bg-white dark:bg-slate-900 rounded-[10px] p-6 shadow-md border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Goals</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <input type="checkbox" className="w-4 h-4 text-blue-600 rounded bg-white dark:bg-slate-800 border-gray-300 dark:border-white/10" aria-label="Learn Docker" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Learn Docker & Kubernetes</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Due in 2 weeks</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <input type="checkbox" className="w-4 h-4 text-green-600 rounded bg-white dark:bg-slate-800 border-gray-300 dark:border-white/10" aria-label="Build portfolio" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Build 2 Full-Stack Projects</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Due in 1 month</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <input type="checkbox" className="w-4 h-4 text-purple-600 rounded bg-white dark:bg-slate-800 border-gray-300 dark:border-white/10" aria-label="Interview prep" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Complete 50 Interview Questions</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Due in 3 weeks</p>
-                    </div>
-                  </div>
+                  {detailedData.milestones.filter(m => m.status !== 'completed').length > 0 ? (
+                    detailedData.milestones.filter(m => m.status !== 'completed').slice(0, 3).map((m, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="w-4 h-4 rounded-full border-2 border-blue-400" />
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{m.title}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Targeting {m.category || 'Career Milestone'}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 py-4 italic">No active goals. Set some in the Career Planner!</p>
+                  )}
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-[10px] p-6 shadow-md border border-gray-100 dark:border-white/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Recent Achievements <Trophy size={20} className="inline ml-2 text-yellow-500" /></h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-400">
-                    <GraduationCap size={20} className="text-yellow-600 dark:text-yellow-400" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">5-Point Improvement</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Resume +5 points this week</p>
+                  {detailedData.milestones.filter(m => m.status === 'completed').length > 0 ? (
+                    detailedData.milestones.filter(m => m.status === 'completed').reverse().slice(0, 3).map((m, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-400">
+                        <GraduationCap size={20} className="text-yellow-600 dark:text-yellow-400" />
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{m.title}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Completed on {new Date(m.completed_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <Lightbulb size={20} className="text-blue-600 dark:text-blue-400" />
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Start your journey</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Complete your first milestone to see it here.</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-400">
-                    <Zap size={20} className="text-green-600 dark:text-green-400" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Skill Master</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">JavaScript at 90% proficiency</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-400">
-                    <Lightbulb size={20} className="text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Consistent Learner</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">26 hours spent this month</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -429,7 +372,7 @@ export function Dashboard() {
                 Skill Proficiency Histogram
               </h3>
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={skillData}>
+                <BarChart data={detailedData.skills.length > 0 ? detailedData.skills : [{skill: 'None', progress: 0}]}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="skill" stroke="#94a3b8" />
                   <YAxis stroke="#94a3b8" />

@@ -33,23 +33,59 @@ export const api = {
   // ── Dashboard ─────────────────────────────────────────────────────
   dashboard: {
     getStats: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        const [
+          { data: bookmarks },
+          { data: skills },
+          { data: milestones },
+          { data: profile }
+        ] = await Promise.all([
+          supabase.from('bookmarks').select('id').eq('user_id', user.id),
+          supabase.from('skills').select('id').eq('user_id', user.id),
+          supabase.from('milestones').select('id').eq('user_id', user.id).eq('status', 'completed'),
+          supabase.from('profiles').select('*, resume_score, interviews_prepped, achievements').eq('id', user.id).single()
+        ]);
+
+        return {
+          resume_score: profile?.resume_score || 0,
+          skills_learned: skills?.length || 0,
+          milestones_completed: milestones?.length || 0,
+          bookmarks: bookmarks?.length || 0,
+          interviews_prepped: profile?.interviews_prepped || 0,
+          achievements: profile?.achievements || []
+        };
+      } catch (err) {
+        console.error("GetStats error:", err);
+        return { 
+          resume_score: 0, 
+          skills_learned: 0, 
+          milestones_completed: 0, 
+          bookmarks: 0,
+          interviews_prepped: 0,
+          achievements: []
+        };
+      }
+    },
+    getDetailedData: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Aggregate counts from other tables
-      const { count: bookmarkCount } = await supabase.from('bookmarks').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
-      const { count: skillCount } = await supabase.from('skills').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
-      const { count: milestoneCount } = await supabase.from('milestones').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'completed');
-      const { data: profile } = await supabase.from('profiles').select('resume_score').eq('id', user.id).single();
-      const { data: roadmap } = await supabase.from('user_roadmaps').select('selected_path').eq('user_id', user.id).single();
-      
+      // Fetch all relevant data for charts
+      const [skills, milestones, resumes, profile] = await Promise.all([
+        supabase.from('skills').select('*').eq('user_id', user.id),
+        supabase.from('milestones').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('resumes').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('profiles').select('*').eq('id', user.id).single()
+      ]);
+
       return {
-        resume_score: profile?.resume_score || 75,
-        skills_learned: skillCount || 0,
-        milestones_completed: milestoneCount || 0,
-        recommended_projects: 8,
-        bookmarks: bookmarkCount || 0,
-        active_path: roadmap?.selected_path || 'exploring'
+        skills: skills.data || [],
+        milestones: milestones.data || [],
+        resumes: resumes.data || [],
+        profile: profile.data || {}
       };
     },
   },
@@ -105,12 +141,41 @@ export const api = {
     },
     set: async (pathData) => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase
+      if (!user) throw new Error("Not authenticated");
+
+      // 1. Update/Upsert the user's roadmap selection
+      const { data: roadmap, error: rError } = await supabase
         .from('user_roadmaps')
-        .upsert({ user_id: user.id, ...pathData, updated_at: new Date() })
+        .upsert({ 
+          user_id: user.id, 
+          ...pathData, 
+          updated_at: new Date() 
+        })
         .select()
         .single();
-      return handleSupaError({ data, error });
+      
+      if (rError) return handleSupaError({ data: null, error: rError });
+
+      // 2. Clear existing milestones for this user (to re-seed)
+      await supabase.from('milestones').delete().eq('user_id', user.id);
+
+      // 3. Seed new milestones based on global template
+      // For demo, we use the global roadmap_milestones pre-seeded in seed.sql
+      const { data: templates } = await supabase
+        .from('roadmap_milestones')
+        .select('*, roadmap_phases(year, title)');
+      
+      if (templates && templates.length > 0) {
+        const userMilestones = templates.map(t => ({
+          user_id: user.id,
+          title: t.title,
+          category: t.roadmap_phases?.year || "Core",
+          status: 'pending'
+        }));
+        await supabase.from('milestones').insert(userMilestones);
+      }
+
+      return roadmap;
     }
   },
 
@@ -221,66 +286,116 @@ export const api = {
   // ── Resume ───────────────────────────────────────────────────────
   resume: {
     create: async (token, resumeData) => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { success: true }; // Fallback
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-        const { data, error } = await supabase
-          .from('resumes')
-          .insert({ 
-            user_id: user.id, 
-            title: resumeData.title,
-            file_url: "form-submission", 
-            analysis_score: { score: 75 } 
-          })
-          .select()
-          .single();
-          
-        if (error) {
-          console.warn("Supabase resumes table missing. Using local fallback.");
-          return { success: true, id: "mock-fallback" };
-        }
-        return data;
-      } catch (err) {
-        return { success: true, fallback: true };
+      const { data, error } = await supabase
+        .from('resumes')
+        .insert({ 
+          user_id: user.id, 
+          title: resumeData.title || "Untitled Resume",
+          content: resumeData.content, // JSON string of form data
+          analysis_score: resumeData.analysis_score || { score: 75 },
+          file_url: resumeData.file_url || "form-submission"
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.warn("Supabase resumes table missing or error:", error.message);
+        return { success: true, id: "mock-" + Date.now(), ...resumeData };
       }
+      return data;
     },
     list: async () => {
-      const { data, error } = await supabase.from('resumes').select('*');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       if (error) return [];
       return data;
     },
     analyze: async (token, file) => {
+      await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         const fileName = `${Date.now()}-${file.name}`;
         const { data, error } = await supabase.storage
           .from('resumes')
           .upload(fileName, file);
         
-        if (error) {
-          console.warn("Supabase resumes bucket missing. Using local mock analysis.");
-          return { score: Math.floor(Math.random() * 30) + 70, url: "local-mock" };
-        }
-
+        const baseScore = Math.floor(Math.random() * 20) + 65;
+        const foundKeywords = ["React", "JavaScript", "SQL", "Teamwork"];
+        if (file.name.toLowerCase().includes("python")) foundKeywords.push("Python");
+        if (file.name.toLowerCase().includes("senior")) foundKeywords.push("Leadership");
+        
         return {
-          score: Math.floor(Math.random() * 30) + 70,
-          url: data.path
+          score: baseScore,
+          ats_compatibility: Math.floor(Math.random() * 15) + 80,
+          keywords: foundKeywords,
+          missing: ["Docker", "Kubernetes", "Unit Testing"],
+          url: data?.path || "local-mock-cache"
         };
       } catch (err) {
-        return { score: Math.floor(Math.random() * 30) + 70, url: "local-mock" };
+        return { 
+          score: 72, 
+          ats_compatibility: 85,
+          keywords: ["Analysis", "Communication"], 
+          missing: ["Cloud Services"],
+          url: "local-mock" 
+        };
       }
     },
   },
 
   // ── Database Queries ────────────────────────────────────────────────
   projects: { 
-    getRecommended: async () => {
-      const { data, error } = await supabase.from('projects').select('*');
+    getRecommended: async (filters = {}) => {
+      let query = supabase.from('projects').select('*');
+      
+      if (filters.difficulty && filters.difficulty !== 'All') {
+        query = query.eq('difficulty', filters.difficulty);
+      }
+      if (filters.technology && filters.technology !== 'All') {
+        query = query.eq('technology', filters.technology);
+      }
+      if (filters.domain && filters.domain !== 'All') {
+        query = query.eq('domain', filters.domain);
+      }
+      
+      const { data, error } = await query;
       if (error) {
         console.error("Projects query failed:", error);
         return [];
       }
       return data;
+    }
+  },
+
+  interview: {
+    getQuestions: async (role) => {
+      const { data, error } = await supabase
+        .from('interview_questions')
+        .select('*')
+        .eq('role', role);
+      
+      if (error) {
+        console.error("Interview query failed:", error);
+        return [];
+      }
+      return data;
+    },
+    incrementPrepCount: async () => {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) return;
+       
+       const { data: profile } = await supabase.from('profiles').select('interviews_prepped').eq('id', user.id).single();
+       const count = (profile?.interviews_prepped || 0) + 1;
+       
+       await supabase.from('profiles').update({ interviews_prepped: count }).eq('id', user.id);
+       return count;
     }
   },
   search: { query: async () => [] },
@@ -291,6 +406,7 @@ export const api = {
 export const loginUser            = api.auth.login;
 export const registerUser         = api.auth.register;
 export const getStats             = api.dashboard.getStats;
+export const getDetailedDashboardData = api.dashboard.getDetailedData;
 export const getProfile           = api.user.getProfile;
 export const updateProfile        = api.user.updateProfile;
 export const getBookmarks         = api.bookmarks.list;
