@@ -6,10 +6,18 @@
 -- =========================================================
 
 -- =========================================================
--- TABLE A: skill_catalog  (GLOBAL — pre-seeded, no user_id)
--- This is the master dictionary of all available skills on the platform.
--- Users pick FROM this catalog to populate their own skills table.
--- Run this DDL first if the table doesn't exist yet in Supabase.
+-- TABLE: profiles refinement (If not exists)
+-- =========================================================
+ALTER TABLE IF EXISTS profiles 
+ADD COLUMN IF NOT EXISTS achievements TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS github_url TEXT,
+ADD COLUMN IF NOT EXISTS linkedin_url TEXT,
+ADD COLUMN IF NOT EXISTS drive_url TEXT,
+ADD COLUMN IF NOT EXISTS resume_score INTEGER DEFAULT 75,
+ADD COLUMN IF NOT EXISTS interviews_prepped INTEGER DEFAULT 0;
+
+-- =========================================================
+-- TABLE A: skill_catalog  (GLOBAL)
 -- =========================================================
 CREATE TABLE IF NOT EXISTS skill_catalog (
   id   SERIAL PRIMARY KEY,
@@ -17,105 +25,83 @@ CREATE TABLE IF NOT EXISTS skill_catalog (
   category VARCHAR(100) NOT NULL
 );
 
--- 1. SEED: skill_catalog (53 globally available skills — no user_id needed)
 INSERT INTO skill_catalog (name, category) VALUES
--- Languages
 ('Python', 'Languages'), ('JavaScript', 'Languages'), ('TypeScript', 'Languages'),
 ('C++', 'Languages'), ('Go', 'Languages'), ('Rust', 'Languages'),
 ('Java', 'Languages'), ('C#', 'Languages'), ('Swift', 'Languages'), ('Kotlin', 'Languages'),
-
--- Frontend
 ('React', 'Frontend'), ('Next.js', 'Frontend'), ('Vue.js', 'Frontend'),
 ('Angular', 'Frontend'), ('Svelte', 'Frontend'), ('Tailwind CSS', 'Frontend'),
 ('Redux', 'Frontend'), ('Framer Motion', 'Frontend'),
-
--- Backend
 ('Node.js', 'Backend'), ('Express.js', 'Backend'), ('Django', 'Backend'),
 ('FastAPI', 'Backend'), ('Spring Boot', 'Backend'), ('Ruby on Rails', 'Backend'),
 ('NestJS', 'Backend'), ('GraphQL', 'Backend'),
-
--- Database
 ('PostgreSQL', 'Database'), ('MongoDB', 'Database'), ('Redis', 'Database'),
 ('MySQL', 'Database'), ('Cassandra', 'Database'), ('Elasticsearch', 'Database'),
 ('Prisma ORM', 'Database'), ('Supabase', 'Database'),
-
--- DevOps & Cloud
 ('Docker', 'DevOps'), ('Kubernetes', 'DevOps'), ('AWS (EC2/S3)', 'DevOps'),
 ('Google Cloud Platform', 'DevOps'), ('Terraform', 'DevOps'), ('GitHub Actions', 'DevOps'),
 ('Nginx', 'DevOps'), ('Linux System Admin', 'DevOps'),
-
--- AI & Data Science
 ('TensorFlow', 'AI/ML'), ('PyTorch', 'AI/ML'), ('Pandas', 'Data Science'),
 ('Scikit-Learn', 'Data Science'), ('OpenAI API', 'AI/ML'),
-
--- Core Concepts
 ('System Design', 'Core Concepts'), ('Data Structures & Algorithms', 'Core Concepts'),
 ('Microservices Architecture', 'Core Concepts'), ('RESTful API Design', 'Core Concepts'),
 ('Agile/Scrum Management', 'Core Concepts'), ('Test-Driven Development', 'Core Concepts')
 ON CONFLICT (name) DO NOTHING;
 
-
 -- =========================================================
--- TABLE B: skills  (USER-SPECIFIC — populated at runtime)
--- Schema: id, user_id, skill_name, level, created_at
--- This table is NOT pre-seeded here. It is populated dynamically
--- when a user adds a skill from their dashboard/profile.
--- The frontend (api.js) inserts into this table via:
---   supabase.from('skills').insert({ user_id, skill_name, level })
+-- TABLE B: projects (Refined for tailoring)
 -- =========================================================
-CREATE TABLE IF NOT EXISTS skills (
-  id SERIAL PRIMARY KEY,
-  user_id UUID NOT NULL, -- Links to Supabase auth.users or your custom users table
-  skill_name VARCHAR(255) NOT NULL,
-  level VARCHAR(50) DEFAULT 'Beginner',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
--- NO INSERT needed — this table fills automatically per user action.
-
-
--- 2. SEED: PROJECTS (30 High-Quality Professional Projects)
-CREATE TABLE IF NOT EXISTS projects (
+DROP TABLE IF EXISTS projects CASCADE;
+CREATE TABLE projects (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   description TEXT,
+  skills TEXT[] DEFAULT '{}',
+  difficulty VARCHAR(50) DEFAULT 'Intermediate',
+  technology VARCHAR(100) DEFAULT 'Full Stack',
+  domain VARCHAR(100) DEFAULT 'Web Development',
   is_recommended BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO projects (title, description, is_recommended) VALUES
-('AI-Powered Financial Analyzer', 'Architect a Python backend ingesting large CSV aggregates using Pandas, wrapped with a React frontend that utilizes Recharts to map localized financial trends.', true),
-('Full-Stack Issue Tracker', 'A resilient product tracker built with Next.js, Node, and PostgreSQL. Implement real-time WebSocket syncing for ticket updates and drag-n-drop Kanban boards.', true),
-('Distributed Cache System', 'Construct an in-memory key-value data store mimicking Redis in Go or C++. Implement LRU cache eviction algorithms and heavy concurrency models utilizing Mutex locks.', true),
-('Decentralized Voting Application', 'Deploy smart contracts via Solidity onto an Ethereum testnet mapping cryptographic voting logs. Link a React frontend utilizing Ethers.js to read states.', false),
-('E-Commerce Recommendation Engine', 'Build a microservice mapping user shopping patterns through a Collaborative Filtering ML algorithm, deploying results globally via a FastAPI endpoint.', true),
-('Serverless Authentication Service', 'Develop an isolated authentication service deployed purely on AWS Lambda functions utilizing JWTs, Bcrypt password hashing, and API Gateways.', false),
-('Real-Time Video Conferencing App', 'Utilize WebRTC and Socket.io to establish peer-to-peer visual mapping bridges. Include a signaling server designed in Express.js.', true),
-('Automated Testing Framework', 'Develop an open-source testing toolkit in Python acting similarly to PyTest, capable of recursively crawling directories executing modular test maps.', false),
-('Cryptocurrency Portfolio Dashboard', 'A Next.js dashboard wrapping continuous polling from Binance APIs. Render tactile glassmorphism elements mapping real-time profit margins.', true),
-('High-Frequency Trading Bot', 'An algorithmic bot constructed in Rust or C++. Monitor exchange order books natively and execute trades mathematically beneath standard temporal thresholds.', false),
-('Cloud-Based PDF Generator', 'Establish an Express instance receiving massive JSON maps, piping streams through Puppeteer, and dropping processed documents cleanly into an S3 bucket.', true),
-('Global Chat Application', 'A WhatsApp clone mapping data continuously through Cassandra (for heavy write loads) and Node.js. Provide absolute end-to-end encryption mechanics.', true),
-('Self-Driving Car Simulation', 'Use Python alongside standard Pygame/OpenCV instances to map physical environments and utilize a genetic algorithm teaching an agent successful track routing.', false),
-('Social Media API Infrastructure', 'Strictly a backend project building rate-limited Graph API structures mimicking Twitter. Use PostgreSQL to handle complex relationship mapping between users.', true),
-('Web Crawler and Indexer', 'A localized search engine built in Go. Crawl domain architectures asynchronously and map semantic relationships via inverted indices mapped to Elasticsearch.', true),
-('Hospital Patient Management System', 'Develop a Java Spring Boot enterprise architecture handling sensitive patient mappings. Utilize strict Role-Based Access Control limits mapped globally.', false),
-('Cross-Platform Fitness Tracker', 'Map local device sensors via React Native and pipe progress logs continuously to a minimal Firebase database structure.', true),
-('Code Snippet Repository', 'A highly accessible React application mapping text fragments. Implement syntax highlighting natively alongside a MongoDB layer for fluid text indexing.', false),
-('Interactive Pathfinding Visualizer', 'A purely visual DOM project utilizing complex graph algorithms (Dijkstra, A*) mapped visually executing at specific interval framerates.', true),
-('Micro-Blogging Platform CMS', 'A minimal content management system specifically orchestrating multi-tenant database clusters allowing thousands of users to map subdomains securely.', false),
-('Stock Prediction Transformer', 'Deploy a foundational PyTorch model mapping temporal stock arrays mapping heavy analytical predictions across upcoming market weeks.', true),
-('Terminal-Based Text Editor', 'Write a minimal POSIX-compliant text editor specifically entirely in C mimicking Vim functionality and handling kernel-level key bindings safely.', false),
-('Job Board Application', 'A Next.js front linked to Prisma ORM. Map complex queries filtering geospatial jobs visually onto an interactive mapping element.', true),
-('Personal Cloud Storage Wrapper', 'Establish an internal drop-box mapping local network chunks. Use WebSockets alongside heavy Docker orchestration to virtualize user drives natively.', false),
-('IoT Temperature Monitor', 'Deploy C headers onto an Arduino/Raspberry Pi mapping thermal reads directly to a sleek web dashboard utilizing lightweight MQTT protocols.', true),
-('Blockchain Block Explorer', 'A heavy front-end project scraping network layers utilizing an RPC interface to dynamically map active block generations visually for users.', false),
-('Restaurant Reservation Ecosystem', 'A PostgreSQL instance handling strict transactional isolation limits (ACID) assuring concurrent booking locks do not inherently collide randomly.', true),
-('Custom Linux Shell', 'A localized bash implementation written strictly in C. Manage native system calls mapping parent-child process handling and local memory piping layers.', false),
-('Expense Tracking Progressive Web App', 'An offline-capable Vue.js application dynamically caching native service workers. Sync local writes efficiently when the device establishes global connections.', true),
-('Static Site Generator', 'A lightweight Node.js engine ingesting massive markdown directories compiling and piping static absolute HTML instances completely devoid of backend requirements.', false);
+INSERT INTO projects (title, description, skills, difficulty, technology, domain, is_recommended) VALUES
+('AI-Powered Financial Analyzer', 'Architect a Python backend ingesting large CSV aggregates using Pandas, wrapped with a React frontend that utilizes Recharts to map localized financial trends.', '{"Python", "Pandas", "React", "Recharts"}', 'Advanced', 'Python', 'AI/ML', true),
+('Full-Stack Issue Tracker', 'A resilient product tracker built with Next.js, Node, and PostgreSQL. Implement real-time WebSocket syncing for ticket updates and drag-n-drop Kanban boards.', '{"Next.js", "Node.js", "PostgreSQL", "WebSockets"}', 'Intermediate', 'Full Stack', 'Web Development', true),
+('Distributed Cache System', 'Construct an in-memory key-value data store mimicking Redis in Go or C++. Implement LRU cache eviction algorithms and heavy concurrency models utilizing Mutex locks.', '{"Go", "C++", "System Design"}', 'Advanced', 'Backend', 'System Engineering', true),
+('Decentralized Voting App', 'Deploy smart contracts via Solidity onto an Ethereum testnet mapping cryptographic voting logs. Link a React frontend utilizing Ethers.js to read states.', '{"Solidity", "React", "Ethers.js"}', 'Advanced', 'Full Stack', 'Blockchain', false),
+('E-Commerce Recommendation Engine', 'Build a microservice mapping user shopping patterns through a Collaborative Filtering ML algorithm, deploying results globally via a FastAPI endpoint.', '{"Python", "FastAPI", "Scikit-Learn"}', 'Intermediate', 'AI/ML', 'E-Commerce', true),
+('Interactive Canvas Application', 'Develop an advanced browser-based drawing application using pure mathematics and matrix transforms.', '{"React", "HTML5 Canvas", "Framer Motion"}', 'Advanced', 'Frontend', 'Web Development', true),
+('Microservices Architecture', 'Architect a resilient system using clustered stateless containers connected via RabbitMQ.', '{"Node.js", "Docker", "Kubernetes", "RabbitMQ"}', 'Advanced', 'Backend', 'Web Development', true),
+('Real-Time WebSocket Dashboard', 'Create a live monitoring system that renders streaming data utilizing bidirectional WebSockets.', '{"React", "Socket.IO", "Chart.js"}', 'Intermediate', 'Frontend', 'Web Development', true),
+('Predictive Analytics Engine', 'Design an algorithmic pipeline that forecasts trends based on multi-variate continuous time-series data.', '{"Python", "TensorFlow", "Pandas"}', 'Advanced', 'Python', 'AI/ML', true),
+('NLP Sentiment Analyzer', 'Create a natural language processing model that scores live customer feedback streams.', '{"PyTorch", "NLTK", "Scikit-Learn"}', 'Intermediate', 'Python', 'AI/ML', true),
+('RESTful Authentication API', 'Develop a high-security user authentication API featuring cryptographic hashing and token issuance.', '{"Express", "JWT", "PostgreSQL"}', 'Intermediate', 'Backend', 'Web Development', true),
+('Hybrid Mobile Social App', 'Implement a hybrid mobile framework that targets iOS and Android simultaneously with real-time sync.', '{"React Native", "Firebase", "Zustand"}', 'Advanced', 'Mobile', 'Mobile Development', true);
 
+-- =========================================================
+-- TABLE C: interview_questions
+-- =========================================================
+CREATE TABLE IF NOT EXISTS interview_questions (
+  id SERIAL PRIMARY KEY,
+  role VARCHAR(100) NOT NULL,
+  category VARCHAR(50) DEFAULT 'Technical', -- Technical, Behavioral, Project
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL
+);
 
--- 3. SEED: ROADMAP PHASES
+INSERT INTO interview_questions (role, category, question, answer) VALUES
+('Frontend Developer', 'Technical', 'What is the Virtual DOM?', 'The Virtual DOM is a lightweight copy of the real DOM. React uses it to batch updates by diffing and reconciliation.'),
+('Frontend Developer', 'Technical', 'Cookies vs LocalStorage?', 'Cookies are small (4KB) and sent with requests. LocalStorage is larger (5MB) and persistent on the client.'),
+('Backend Developer', 'Technical', 'REST vs GraphQL?', 'REST uses multiple fixed endpoints. GraphQL uses a single endpoint for flexible data fetching.'),
+('Backend Developer', 'Technical', 'Horizontal vs Vertical Scaling?', 'Vertical: Adding power to one server. Horizontal: Adding more servers to a load balancer.'),
+('Data Scientist', 'Technical', 'Supervised vs Unsupervised?', 'Supervised uses labeled data for training. Unsupervised finds patterns in unlabeled data.'),
+('Full Stack Developer', 'Project', 'Walk me through your most complex project.', 'Use the STAR method to explain: (1) Problem, (2) Architectural choices, (3) Your contributions, (4) Impact.'),
+('Frontend Developer', 'Behavioral', 'How do you handle scope creep?', 'Communicate with PMs early, evaluate technical trade-offs, and focus on the MVP.'),
+('AI/ML Engineer', 'Technical', 'What is Gradient Descent?', 'An optimization algorithm to minimize cost functions by moving towards the steepest descent of the gradient.');
+
+-- =========================================================
+-- TABLE D: roadmap_phases & milestones
+-- =========================================================
 CREATE TABLE IF NOT EXISTS roadmap_phases (
   id SERIAL PRIMARY KEY,
   year VARCHAR(50) NOT NULL,
@@ -129,8 +115,6 @@ INSERT INTO roadmap_phases (id, year, title) VALUES
 (4, 'Year 4', 'Professional Launch Operations')
 ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title;
 
-
--- 4. SEED: ROADMAP MILESTONES
 CREATE TABLE IF NOT EXISTS roadmap_milestones (
   id SERIAL PRIMARY KEY,
   roadmap_phase_id INTEGER REFERENCES roadmap_phases(id) ON DELETE CASCADE,
@@ -138,29 +122,57 @@ CREATE TABLE IF NOT EXISTS roadmap_milestones (
 );
 
 INSERT INTO roadmap_milestones (roadmap_phase_id, title) VALUES
--- Year 1
 (1, 'Master Core Programming Syntax (C++, Java, or Python)'),
 (1, 'Understand Big-O Notation & Time/Space Complexities'),
 (1, 'Map Base Algorithms (Sorting, Searching, Pointers)'),
 (1, 'Master Foundational Data Structures (Arrays, Hash Maps, Trees)'),
-
--- Year 2
 (2, 'Transition purely to Object-Oriented Architectures'),
 (2, 'Execute Version Control logic smoothly via Git/GitHub'),
 (2, 'Architect functional databases utilizing SQL protocols'),
 (2, 'Build your first HTTP REST API handling concurrent loads'),
-
--- Year 3
 (3, 'Integrate Cloud infrastructures (AWS/Google Cloud Platforms)'),
 (3, 'Contribute safely to 2 Open Source framework layers'),
 (3, 'Finalize mapping out a heavy multi-container Docker cluster'),
 (3, 'Lock-in an intensive corporate Intern position natively'),
-
--- Year 4
 (4, 'Complete absolute System Design mapping simulations'),
 (4, 'Finalize 3 highly-technical, scale-grade personal projects'),
 (4, 'Execute continuous behavioral mock-interview systems'),
 (4, 'Complete formal ATS Resume synchronization passes');
 
--- Reset sequences out of an abundance of caution
+-- =========================================================
+-- TABLE E: role_requirements (For Career Planner Skill Gaps)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS role_requirements (
+  id SERIAL PRIMARY KEY,
+  role VARCHAR(100) NOT NULL,
+  required_skills TEXT[] NOT NULL
+);
+
+INSERT INTO role_requirements (role, required_skills) VALUES
+('Frontend Developer', '{"React", "Next.js", "TypeScript", "Tailwind CSS", "Redux"}'),
+('Backend Developer', '{"Node.js", "PostgreSQL", "Redis", "Docker", "GraphQL"}'),
+('Full Stack Developer', '{"React", "Node.js", "Supabase", "System Design", "AWS"}'),
+('Data Scientist', '{"Python", "Pandas", "Scikit-Learn", "SQL", "Statistics"}'),
+('AI/ML Engineer', '{"PyTorch", "TensorFlow", "MLOps", "Math", "Python"}');
+
+-- =========================================================
+-- TABLE F: research_guide
+-- =========================================================
+CREATE TABLE IF NOT EXISTS research_guide (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  icon VARCHAR(50) NOT NULL,
+  color VARCHAR(50) NOT NULL,
+  content TEXT[] NOT NULL
+);
+
+INSERT INTO research_guide (title, icon, color, content) VALUES
+('Research Idea Selection', 'Lightbulb', 'bg-[var(--mapout-mint)]', '{"Identify a problem in your field of interest", "Review existing literature", "Look for gaps or areas that need improvement", "Ensure feasibility", "Discuss with mentors"}'),
+('Paper Structure', 'FileText', 'bg-[var(--mapout-accent)]', '{"Abstract: 150-250 words", "Introduction", "Literature Review", "Methodology", "Results", "Discussion", "Conclusion", "References"}'),
+('IEEE Formatting', 'Layout', 'bg-[var(--mapout-pink)]', '{"Use official templates", "Margins: 0.75 inches", "Font: Times New Roman, 10pt", "Two column format", "Numbered headings", "Equations: Center-aligned", "Figures and Tables: Captioned"}');
+
+-- Reset sequences
 SELECT setval('roadmap_phases_id_seq', (SELECT MAX(id) FROM roadmap_phases));
+SELECT setval('projects_id_seq', (SELECT MAX(id) FROM projects));
+SELECT setval('interview_questions_id_seq', (SELECT MAX(id) FROM interview_questions));
+SELECT setval('research_guide_id_seq', (SELECT MAX(id) FROM research_guide));

@@ -139,6 +139,11 @@ export const api = {
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     },
+    getPhases: async () => {
+      const { data, error } = await supabase.from('roadmap_phases').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
     set: async (pathData) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -203,7 +208,11 @@ export const api = {
         emailNotifications: data?.email_notifications ?? true,
         newsletterOptIn: data?.newsletter_opt_in ?? true,
         themePreference: data?.theme_preference || 'dark',
-        joinDate: data?.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "March 2024"
+        joinDate: data?.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "April 2026",
+        achievements: data?.achievements || [],
+        githubUrl: data?.github_url || "",
+        linkedinUrl: data?.linkedin_url || "",
+        driveUrl: data?.drive_url || ""
       };
     },
 
@@ -221,6 +230,10 @@ export const api = {
         email_notifications: data.emailNotifications,
         newsletter_opt_in: data.newsletterOptIn,
         theme_preference: data.themePreference,
+        achievements: data.achievements,
+        github_url: data.githubUrl,
+        linkedin_url: data.linkedinUrl,
+        drive_url: data.driveUrl,
         updated_at: new Date()
       };
 
@@ -370,16 +383,18 @@ export const api = {
         console.error("Projects query failed:", error);
         return [];
       }
-      return data;
+      return data.map(p => ({
+        ...p,
+        category: p.technology?.toLowerCase().replace(' ', '-') || 'other'
+      }));
     }
   },
 
   interview: {
     getQuestions: async (role) => {
-      const { data, error } = await supabase
-        .from('interview_questions')
-        .select('*')
-        .eq('role', role);
+      let query = supabase.from('interview_questions').select('*');
+      if (role) query = query.eq('role', role);
+      const { data, error } = await query;
       
       if (error) {
         console.error("Interview query failed:", error);
@@ -398,9 +413,54 @@ export const api = {
        return count;
     }
   },
-  search: { query: async () => [] },
+  search: { 
+    query: async (searchTerm) => {
+      const [projectsResult, interviewResult] = await Promise.all([
+        supabase.from('projects').select('id, title, domain, description').ilike('title', `%${searchTerm}%`),
+        supabase.from('interview_questions').select('id, question, role').ilike('question', `%${searchTerm}%`)
+      ]);
+
+      const projects = (projectsResult.data || []).map(p => ({
+        id: p.id,
+        title: p.title,
+        type: 'project',
+        path: '/projects',
+        domain: p.domain
+      }));
+
+      const faqs = (interviewResult.data || []).map(q => ({
+        id: q.id,
+        title: q.question,
+        type: 'faq',
+        path: '/interview-faqs',
+        domain: q.role
+      }));
+
+      return [...projects, ...faqs];
+    } 
+  },
+  planner: {
+    getRoleRequirements: async (role) => {
+      const { data, error } = await supabase
+        .from('role_requirements')
+        .select('*')
+        .eq('role', role)
+        .single();
+      if (error) return null;
+      return data.required_skills;
+    }
+  },
+  research: {
+    getGuide: async () => {
+      const { data, error } = await supabase.from('research_guide').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data;
+    }
+  },
   exports: { create: async () => ({ message: "Export created" }) },
 };
+
+export const getResearchGuide     = api.research.getGuide;
 
 // ── Named convenience exports ──────────────────────────────────────
 export const loginUser            = api.auth.login;
@@ -429,7 +489,14 @@ export const addMilestone          = api.milestones.add;
 export const getNotifications      = api.notifications.list;
 export const markNotificationRead  = api.notifications.markAsRead;
 export const getRoadmap            = api.roadmaps.get;
+export const getRoadmapPhases      = api.roadmaps.getPhases;
 export const setRoadmap            = api.roadmaps.set;
+
+// Convenience Aliases for UI Components
+export const getProjects           = api.projects.getRecommended;
+export const getFAQs               = api.interview.getQuestions;
+export const getResearchGuides     = api.research.getGuide;
+export const searchContent         = api.search.query;
 
 
 

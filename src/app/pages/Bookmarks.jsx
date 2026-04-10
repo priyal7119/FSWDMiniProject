@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Bookmark, Trash2, ExternalLink, Grid, List, Heart, Archive, Save, Briefcase, BookOpen, HelpCircle, File } from "lucide-react";
+import { Bookmark, Trash2, ExternalLink, Grid, List, Heart, Archive, Save, Briefcase, BookOpen, HelpCircle, File, LayoutGrid, Rows } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,9 +22,8 @@ export function Bookmarks() {
   const [filteredItems, setFilteredItems] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [itemToRemove, setItemToRemove] = useState(null);
   const token = localStorage.getItem("token");
-  const { success, error: toastError, warning } = useToast();
+  const { success, error: toastError, info } = useToast();
 
   useEffect(() => {
     if (!token) {
@@ -40,48 +39,8 @@ export function Bookmarks() {
         setFilteredItems(bookmarks);
       } catch (err) {
         console.error("Error fetching bookmarks:", err);
-        toastError("Failed to fetch your saved library.");
-        // Use default mock data if API fails
-        setItems([
-          {
-            id: 1,
-            title: "E-Commerce Platform Project",
-            type: "project",
-            category: "Web Development",
-            savedDate: "March 15, 2024",
-            description: "Build a complete e-commerce application with shopping cart and payment integration",
-            color: "bg-blue-50",
-          },
-          {
-            id: 2,
-            title: "React Advanced Patterns",
-            type: "course",
-            category: "Frontend",
-            savedDate: "March 14, 2024",
-            description: "Learn advanced React patterns including hooks, context, and performance optimization",
-            color: "bg-purple-50",
-          },
-          {
-            id: 4,
-            title: "Virtual DOM Explanation",
-            type: "faq",
-            category: "Interview Q&A",
-            savedDate: "March 12, 2024",
-            description: "How does Virtual DOM work in React?",
-            color: "bg-orange-50",
-          },
-          {
-            id: 5,
-            title: "Machine Learning Basics",
-            type: "course",
-            category: "AI/ML",
-            savedDate: "March 10, 2024",
-            description: "Introduction to machine learning concepts and algorithms",
-            color: "bg-pink-50",
-          },
-        ]);
-        setItems(mock);
-        setFilteredItems(mock);
+        setItems([]);
+        setFilteredItems([]);
       } finally {
         setLoading(false);
       }
@@ -102,30 +61,29 @@ export function Bookmarks() {
     try {
       await removeBookmark(token, id);
       setItems(items.filter(item => item.id !== id));
-      setItemToRemove(null);
+      success("Resource de-archived.");
     } catch (err) {
       console.error("Error removing bookmark:", err);
       toastError("Failed to remove item.");
-      setItemToRemove(null);
     }
   };
 
   const getTypeIcon = (type) => {
     const icons = {
-      project: <Briefcase size={24} className="text-blue-600" />,
-      course: <BookOpen size={24} className="text-purple-600" />,
-      faq: <HelpCircle size={24} className="text-orange-600" />,
+      project: <Briefcase size={24} className="text-primary" />,
+      course: <BookOpen size={24} className="text-teal-500" />,
+      faq: <HelpCircle size={24} className="text-primary" />,
     };
-    return icons[type] || <File size={24} className="text-gray-600" />;
+    return icons[type] || <File size={24} className="text-muted-foreground" />;
   };
 
   const getTypeColor = (type) => {
     const colors = {
-      project: "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-      course: "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300",
-      faq: "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300",
+      project: "text-primary bg-primary/10 border-primary/20",
+      course: "text-teal-500 bg-teal-500/10 border-teal-500/20",
+      faq: "text-primary bg-primary/10 border-primary/20",
     };
-    return colors[type] || "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300";
+    return colors[type] || "text-muted-foreground bg-muted border-border";
   };
 
   const handleOpen = (item) => {
@@ -134,252 +92,169 @@ export function Bookmarks() {
     else navigate('/research-guide');
   };
 
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">
+       <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>;
+  }
+
   return (
-    <div className="min-h-screen bg-[var(--mapout-bg)] font-sans">
+    <div className="min-h-screen bg-background">
       <div className="max-w-[1440px] mx-auto px-20 py-12">
-        <h1 className="mb-8 font-bold text-4xl text-gray-900 dark:text-white">
-          Bookmarks
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8 font-medium">Save and organize your favorite resources</p>
-
-        {!token ? (
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40 rounded-[12px] p-12 border border-blue-100 dark:border-blue-900/20 text-center mb-12 shadow-sm transition-colors duration-300">
-            <div className="bg-white dark:bg-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md border border-blue-50 dark:border-white/5 text-blue-600 dark:text-blue-400">
-              <Bookmark className="w-10 h-10" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4 tracking-tight text-gray-900 dark:text-white">Elevate Your Knowledge Base</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-10 text-lg max-w-2xl mx-auto leading-relaxed">
-              Build your professional toolkit by organizing articles, projects, and career resources. Create a personal knowledge library that grows with your career.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-left font-sans">
-              <div className="bg-white/80 dark:bg-slate-800/40 p-6 rounded-xl border border-blue-100 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-                <div className="text-indigo-600 dark:text-indigo-400 mb-3"><Save className="w-6 h-6" /></div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-1">Instant Save</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Capture valuable insights with a single click.</p>
-              </div>
-              <div className="bg-white/80 dark:bg-slate-800/40 p-6 rounded-xl border border-blue-100 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-                <div className="text-blue-600 dark:text-blue-400 mb-3"><Bookmark className="w-6 h-6" /></div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-1">Smart Sorting</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Auto-categorization for efficient discovery.</p>
-              </div>
-              <div className="bg-white/80 dark:bg-slate-800/40 p-6 rounded-xl border border-blue-100 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-                <div className="text-cyan-600 dark:text-cyan-400 mb-3"><Archive className="w-6 h-6" /></div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-1">Quick Recall</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Find what you need exactly when you need it.</p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate("/login")}
-              className="px-8 py-3 bg-[var(--mapout-secondary)] text-white rounded-md hover:bg-[var(--mapout-primary)] transition-colors font-semibold text-lg"
-            >
-              Sign In to Save Resources
-            </button>
-          </div>
-        ) : null}
-
-        {token && (
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium">
-              {items.length} saved item{items.length !== 1 ? 's' : ''}
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
+          <div className="animate-in fade-in slide-in-from-left-4 duration-700">
+             <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-teal-500/20">
+                   <Archive size={24} />
+                </div>
+                <h2 className="text-xl font-black tracking-tight text-foreground">Archive Vault</h2>
+             </div>
+            <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tight mb-4 leading-none">
+              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--mapout-primary)] to-[var(--mapout-secondary)]">Library.</span>
+            </h1>
+            <p className="text-muted-foreground font-medium max-w-xl text-lg">
+              Manage and scale your personal knowledge repository of high-impact career resources.
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === "grid"
-                  ? "bg-[var(--mapout-secondary)] text-white shadow-lg shadow-blue-500/30"
-                  : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-white/5"
-              }`}
-              aria-label="Grid view"
-              aria-pressed={viewMode === "grid"}
-            >
-              <Grid size={20} />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === "list"
-                  ? "bg-[var(--mapout-secondary)] text-white shadow-lg shadow-blue-500/30"
-                  : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 border border-transparent dark:border-white/5"
-              }`}
-              aria-label="List view"
-              aria-pressed={viewMode === "list"}
-            >
-              <List size={20} />
-            </button>
-          </div>
+
+          {!token && (
+             <button
+               onClick={() => navigate("/login")}
+               className="px-10 py-5 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
+             >
+               Sign In to Architect
+             </button>
+          )}
         </div>
-        )}
 
-        {/* Filter Tabs */}
         {token && (
-          <div className="bg-white dark:bg-slate-800/40 rounded-[10px] p-4 shadow-md mb-8 flex items-center gap-4 border border-transparent dark:border-white/5 font-sans">
-            <h3 className="text-lg font-bold uppercase tracking-wider text-gray-800 dark:text-gray-200">Filters:</h3>
-            <div className="flex flex-wrap gap-2">
-              {[{id: 'all', label: 'All'}, {id: 'project', label: 'Projects'}, {id: 'course', label: 'Courses'}, {id: 'faq', label: 'FAQs'}].map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => setActiveFilter(type.id)}
-                  className={`px-5 py-2 rounded-full text-sm font-bold shadow-sm transition-colors ${
-                    activeFilter === type.id 
-                    ? "bg-[var(--mapout-secondary)] text-white" 
-                    : "bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600"
-                  }`}
-                  aria-label={`Filter by ${type.label}`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+          <div className="space-y-12">
+            
+            {/* Filter & View Mode */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-8 bg-card border border-border rounded-[2.5rem] shadow-sm gap-8">
+               <div className="flex flex-wrap gap-3">
+                  {['all', 'project', 'course', 'faq'].map((filter) => (
+                     <button
+                       key={filter}
+                       onClick={() => setActiveFilter(filter)}
+                       className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                         activeFilter === filter ? 'bg-primary text-white shadow-lg' : 'bg-muted text-muted-foreground hover:bg-white'
+                       }`}
+                     >
+                        {filter}
+                     </button>
+                  ))}
+               </div>
 
-        {/* Grid View */}
-        {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <div key={item.id} className={`${item.color} dark:bg-slate-900/40 border border-transparent dark:border-white/5 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-1 group`}>
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-transparent dark:border-white/10 group-hover:scale-110 transition-transform">
-                    {getTypeIcon(item.type)}
-                  </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-transparent dark:border-red-500/20"
-                        aria-label="Remove bookmark"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="dark:bg-slate-900 dark:border-white/10">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="dark:text-white">Remove Bookmark</AlertDialogTitle>
-                        <AlertDialogDescription className="dark:text-slate-400">
-                          Are you sure you want to remove "{item.title}" from your bookmarks? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="dark:bg-slate-800 dark:text-white dark:border-white/10">Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleRemove(item.id)}
-                          className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-                        >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-
-                <h3 className="font-bold text-lg mb-2 text-slate-900 dark:text-white tracking-tight">{item.title}</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 line-clamp-2 font-medium leading-relaxed">{item.description}</p>
-
-                <div className="flex justify-between items-center mt-auto">
-                  <div className="flex gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getTypeColor(item.type)}`}>
-                      {item.type}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                      {item.category}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleOpen(item)}
-                    className="p-2 bg-white dark:bg-slate-800 text-[var(--mapout-secondary)] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors shadow-sm border dark:border-white/5"
-                    aria-label="Open item"
+               <div className="flex items-center gap-2 p-1.5 bg-muted rounded-2xl border border-border">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
                   >
-                    <ExternalLink size={16} />
+                     <LayoutGrid size={20} />
                   </button>
-                </div>
-
-                <div className="h-[1px] bg-slate-100 dark:bg-white/5 my-4"></div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">Saved {item.savedDate}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          /* List View */
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-white/5">
-            <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {filteredItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                  <div className="flex items-center gap-6 flex-1">
-                    <div className="flex items-center justify-center w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl shadow-inner group-hover:scale-105 transition-transform">
-                      {getTypeIcon(item.type)}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white mb-1">{item.title}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{item.description}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
-                          <Bookmark size={12} className="inline" />
-                          {item.savedDate}
-                        </span>
-                        <span className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{item.category}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 items-center ml-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${getTypeColor(item.type)}`}>
-                      {item.type}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpen(item)}
-                        className="p-2 text-[var(--mapout-secondary)] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg transition-all"
-                        aria-label="Open item"
-                      >
-                        <ExternalLink size={18} />
-                      </button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button
-                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                            aria-label="Remove bookmark"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="dark:bg-slate-900 dark:border-white/10">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="dark:text-white">Remove Bookmark</AlertDialogTitle>
-                            <AlertDialogDescription className="dark:text-slate-400">
-                              Are you sure you want to remove "{item.title}" from your bookmarks?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="dark:bg-slate-800 dark:text-white">Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleRemove(item.id)}
-                              className="bg-red-600 hover:bg-red-700 dark:bg-red-500"
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                     <Rows size={20} />
+                  </button>
+               </div>
             </div>
+
+            {/* Content View */}
+            {viewMode === 'grid' ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-700">
+                  {filteredItems.map((item) => (
+                     <div key={item.id} className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:shadow-teal-500/5 transition-all group flex flex-col relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
+                        
+                        <div className="flex justify-between items-start mb-10">
+                           <div className="w-14 h-14 bg-white border border-border rounded-2xl flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                              {getTypeIcon(item.type)}
+                           </div>
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                 <button className="p-3 rounded-xl bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-all">
+                                    <Trash2 size={20} />
+                                 </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-card border-border rounded-[2rem]">
+                                 <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-black">Discard Archive?</AlertDialogTitle>
+                                    <AlertDialogDescription className="font-medium text-muted-foreground">This resource will be removed from your secure library synchronization.</AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRemove(item.id)} className="bg-rose-500 hover:bg-rose-600 rounded-xl font-black uppercase text-[10px] tracking-widest">Confirm Removal</AlertDialogAction>
+                                 </AlertDialogFooter>
+                              </AlertDialogContent>
+                           </AlertDialog>
+                        </div>
+
+                        <div className="mb-6">
+                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-current shadow-sm ${getTypeColor(item.type)}`}>
+                              {item.type}
+                           </span>
+                        </div>
+
+                        <h3 className="text-2xl font-black text-foreground mb-4 tracking-tight leading-tight">
+                           {item.title}
+                        </h3>
+                        <p className="text-muted-foreground leading-relaxed font-medium mb-10 text-sm line-clamp-2">
+                           {item.description}
+                        </p>
+
+                        <div className="mt-auto pt-8 border-t border-border flex items-center justify-between">
+                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Archived {item.savedDate || 'Recent'}</span>
+                           <button 
+                             onClick={() => handleOpen(item)}
+                             className="p-3 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                           >
+                              <ExternalLink size={18} />
+                           </button>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            ) : (
+               <div className="space-y-4 animate-in fade-in duration-700">
+                  {filteredItems.map((item) => (
+                     <div key={item.id} className="bg-card border border-border rounded-[2rem] p-6 group flex items-center justify-between hover:bg-muted/30 transition-all">
+                        <div className="flex items-center gap-8 flex-1">
+                           <div className="w-14 h-14 bg-white border border-border rounded-xl flex items-center justify-center shadow-sm">
+                              {getTypeIcon(item.type)}
+                           </div>
+                           <div>
+                              <div className="flex items-center gap-3 mb-1">
+                                 <h3 className="font-black text-lg text-foreground tracking-tight">{item.title}</h3>
+                                 <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-current ${getTypeColor(item.type)}`}>{item.type}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground font-medium line-clamp-1">{item.description}</p>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                           <button onClick={() => handleOpen(item)} className="p-3 text-primary hover:bg-primary/10 rounded-xl transition-all"><ExternalLink size={20} /></button>
+                           <button className="p-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-xl transition-all"><Trash2 size={20} /></button>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            )}
+
+            {filteredItems.length === 0 && (
+               <div className="py-24 bg-muted/30 border border-border border-dashed rounded-[3rem] text-center">
+                  <Bookmark size={40} className="mx-auto mb-6 text-muted-foreground opacity-30" />
+                  <h3 className="text-xl font-black mb-2">Archive empty.</h3>
+                  <p className="text-muted-foreground font-medium">Synchronize high-impact resources through the Dashboard or Projects portal.</p>
+               </div>
+            )}
+
           </div>
         )}
-
-        {items.length === 0 ? (
-          <div className="text-center py-20 bg-white/40 dark:bg-slate-900/40 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10">
-            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bookmark size={40} className="text-slate-300 dark:text-slate-600" />
-            </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-white mb-2">No bookmarks yet</p>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Start bookmarking projects and courses to see them here.</p>
-          </div>
-        ) : null}
       </div>
     </div>
   );

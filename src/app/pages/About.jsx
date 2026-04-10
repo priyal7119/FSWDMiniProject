@@ -1,62 +1,75 @@
+import { Globe, Lightbulb, Target, Cpu, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router";
+
 export default function About() {
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto px-6 py-20 flex flex-col items-center">
-        <div className="w-20 h-2 bg-blue-600 rounded-full mb-8"></div>
-        <h1 className="text-6xl font-extrabold text-center mb-4 text-slate-900 dark:text-white tracking-tight font-sans">
-          About MapOut
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[1440px] mx-auto px-6 py-24 flex flex-col items-center">
+        
+        <div className="w-24 h-2 bg-primary rounded-full mb-12 animate-pulse"></div>
+        <h1 className="text-6xl md:text-8xl font-black text-center mb-8 text-foreground tracking-tight leading-none italic">
+          About <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--mapout-primary)] to-[var(--mapout-secondary)]">MapOut.</span>
         </h1>
-        <p className="text-xl text-slate-500 dark:text-slate-400 text-center mb-16 font-medium max-w-2xl">
-          Empowering the next generation of tech professionals with AI-driven career intelligence.
+        <p className="text-xl text-muted-foreground text-center mb-24 font-medium max-w-2xl leading-relaxed">
+          The next generation of career tools powered by easy-to-use AI.
         </p>
 
-        <div className="space-y-12 text-lg leading-relaxed w-full">
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-shadow">
-            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white font-sans">Our Journey</h2>
-            <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              MapOut began as a vision to revolutionize career development for students and young professionals.
-              Founded in 2026, our platform emerged from the recognition that traditional career guidance often
-              falls short in today's rapidly evolving job market.
-            </p>
-          </section>
-
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-shadow">
-            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white font-sans">What We Do</h2>
-            <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              We leverage cutting-edge AI technology to provide personalized career planning, resume optimization,
-              skill gap detection, and interview preparation. Our comprehensive platform integrates multiple tools
-              to guide users through every step of their professional development journey.
-            </p>
-          </section>
-
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-shadow">
-            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white font-sans">Our Mission</h2>
-            <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              To empower every individual with the tools and insights needed to build successful, fulfilling careers.
-              We believe that with the right guidance and resources, anyone can achieve their professional aspirations.
-            </p>
-          </section>
-
-          <section className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-white/5 hover:shadow-md transition-shadow">
-            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white font-sans">Innovation & Tech</h2>
-            <p className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              At MapOut, we continuously innovate using the latest in AI and machine learning to provide accurate,
-              up-to-date career insights. Our platform adapts to industry trends and user feedback to ensure
-              the most relevant and effective guidance.
-            </p>
-          </section>
-
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-10 rounded-3xl text-white text-center shadow-2xl mt-16">
-            <h2 className="text-3xl font-extrabold mb-4 font-sans">Join Our Community</h2>
-            <p className="text-blue-50/90 text-lg font-medium leading-relaxed mb-8">
-              Whether you're a student exploring career options or a professional seeking advancement,
-              MapOut is here to help you navigate your path with confidence.
-            </p>
-            <button className="px-8 py-4 bg-white text-blue-700 rounded-2xl font-bold hover:scale-105 transition-transform shadow-lg">
-              Get Started Now
-            </button>
-          </div>
+        {/* Story Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full">
+          {[
+            { 
+              icon: Globe, title: "Our Story", 
+              desc: "Founded in 2026, MapOut was built to help everyone bridge the gap between education and a great career." 
+            },
+            { 
+              icon: Cpu, title: "Our Technology", 
+              desc: "We use advanced AI to help you build the perfect resume and find your ideal career path." 
+            },
+            { 
+              icon: Target, title: "Our Mission", 
+              desc: "Our goal is simple: to help you succeed. We don't just provide guides; we provide the tools you need to lead your industry." 
+            },
+            { 
+              icon: Lightbulb, title: "Our Vision", 
+              desc: "We bring clarity to your career journey with real-time updates on global industry trends." 
+            }
+          ].map((item, i) => (
+             <div key={i} className="bg-card border border-border p-12 rounded-[3.5rem] shadow-sm hover:shadow-2xl hover:shadow-teal-500/5 transition-all group">
+                <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-8 border border-primary/10 group-hover:scale-110 transition-transform">
+                   <item.icon size={28} />
+                </div>
+                <h2 className="text-3xl font-black mb-6 text-foreground tracking-tight">{item.title}</h2>
+                <p className="text-muted-foreground font-medium leading-relaxed italic">
+                  "{item.desc}"
+                </p>
+             </div>
+          ))}
         </div>
+
+        {/* Call to Action */}
+        <div className="w-full mt-24">
+           <div className="bg-primary text-white p-12 md:p-20 rounded-[4rem] text-center shadow-2xl shadow-teal-500/10 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-teal-400/10 rounded-full blur-[100px]" />
+              
+              <div className="relative z-10">
+                 <h2 className="text-4xl md:text-5xl font-black mb-8 tracking-tight">Level up your career.</h2>
+                 <p className="text-teal-50/80 text-xl font-medium leading-relaxed mb-12 max-w-3xl mx-auto">
+                    Whether you are just starting or looking for your next big role, MapOut has the tools you need to succeed.
+                 </p>
+                 <button 
+                   onClick={() => navigate('/login')}
+                   className="px-12 py-5 bg-white text-primary rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-3 mx-auto"
+                 >
+                    Get Started <ArrowRight size={16} />
+                 </button>
+              </div>
+           </div>
+        </div>
+
       </div>
     </div>
   );

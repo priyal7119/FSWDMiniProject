@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Share2, Copy, CheckCircle, Linkedin, Twitter, Mail, Link } from "lucide-react";
+import { Share2, Copy, CheckCircle, Linkedin, Twitter, Mail, Link, X, Globe, UserPlus, Users } from "lucide-react";
 
 export function ShareModal({ isOpen, onClose, title = "Check this out!", description = "I'm using MapOut to advance my career" }) {
   const [copied, setCopied] = useState(false);
@@ -25,108 +25,79 @@ export function ShareModal({ isOpen, onClose, title = "Check this out!", descrip
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-[10px] shadow-lg max-w-sm w-full">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
+      <div className="bg-card border border-border rounded-[3rem] shadow-2xl max-w-lg w-full overflow-hidden relative z-10 animate-in zoom-in-95 duration-300">
+        
         {/* Header */}
-        <div className="border-b p-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Share2 size={24} className="text-[var(--mapout-primary)]" />
-            Share
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">{title}</p>
+        <div className="p-8 border-b border-border flex justify-between items-center bg-muted/30">
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-teal-500/20">
+                <Share2 size={24} />
+             </div>
+             <div>
+                <h2 className="text-xl font-black tracking-tight text-foreground">Distribute Vector</h2>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Institutional Sharing protocol</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-3 rounded-full hover:bg-muted transition-colors text-muted-foreground"><X size={24} /></button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
-          {/* Social Share Buttons */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-gray-600 uppercase">Share on</p>
-
-            <button
-              onClick={() => handleShare("linkedin")}
-              className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors"
-              aria-label="Share on LinkedIn"
-            >
-              <Linkedin size={20} className="text-blue-600" />
-              <div className="text-left">
-                <p className="font-semibold text-sm">LinkedIn</p>
-                <p className="text-xs text-gray-600">Share with your network</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleShare("twitter")}
-              className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors"
-              aria-label="Share on Twitter"
-            >
-              <Twitter size={20} className="text-blue-400" />
-              <div className="text-left">
-                <p className="font-semibold text-sm">Twitter</p>
-                <p className="text-xs text-gray-600">Tweet about it</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleShare("email")}
-              className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              aria-label="Share via email"
-            >
-              <Mail size={20} className="text-gray-600" />
-              <div className="text-left">
-                <p className="font-semibold text-sm">Email</p>
-                <p className="text-xs text-gray-600">Send to friends</p>
-              </div>
-            </button>
-          </div>
-
-          {/* Copy Link */}
-          <div className="pt-4 border-t">
-            <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Or copy link</p>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-gray-100 rounded-lg p-3 flex items-center gap-2 overflow-hidden">
-                <Link size={16} className="text-gray-600 flex-shrink-0" />
-                <span className="text-xs text-gray-700 truncate">{shareUrl}</span>
-              </div>
+        <div className="p-10 space-y-10">
+          
+          <div className="grid grid-cols-1 gap-4">
+            <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Network Channels</h3>
+            {[
+              { id: 'linkedin', label: 'LinkedIn Professional', icon: Linkedin, color: 'text-primary' },
+              { id: 'twitter', label: 'Twitter Feed', icon: Twitter, color: 'text-sky-500' },
+              { id: 'email', label: 'Secure Email Dispatch', icon: Mail, color: 'text-muted-foreground' }
+            ].map((platform) => (
               <button
-                onClick={handleCopyLink}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                  copied
-                    ? "bg-green-100 text-green-700"
-                    : "bg-[var(--mapout-primary)] text-white hover:shadow-lg"
-                }`}
-                aria-label="Copy link to clipboard"
+                key={platform.id}
+                onClick={() => handleShare(platform.id)}
+                className="w-full flex items-center justify-between p-5 bg-muted/30 border border-transparent rounded-[2rem] hover:border-border hover:bg-white transition-all group"
               >
-                {copied ? (
-                  <>
-                    <CheckCircle size={16} />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={16} />
-                    Copy
-                  </>
-                )}
+                <div className="flex items-center gap-4">
+                   <div className={`w-12 h-12 rounded-xl bg-white border border-border flex items-center justify-center ${platform.color} shadow-sm group-hover:scale-110 transition-transform`}>
+                      <platform.icon size={20} />
+                   </div>
+                   <span className="font-bold text-foreground">{platform.label}</span>
+                </div>
+                <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </button>
-            </div>
+            ))}
           </div>
 
-          {/* Share Stats */}
-          <div className="pt-4 border-t bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
-            <p className="font-semibold mb-2">🎯 Sharing Impact</p>
-            <p className="text-xs">When you share MapOut, you help friends discover career growth opportunities and help us reach more people!</p>
+          <div className="space-y-4">
+             <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Direct Link Vector</h3>
+             <div className="flex gap-4 p-2 bg-muted/30 border border-border rounded-2xl pr-2">
+                <div className="flex-1 px-4 flex items-center gap-3 overflow-hidden">
+                   <Globe size={16} className="text-muted-foreground flex-shrink-0" />
+                   <span className="text-xs font-bold text-muted-foreground truncate italic">{shareUrl}</span>
+                </div>
+                <button
+                  onClick={handleCopyLink}
+                  className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                    copied ? "bg-teal-500 text-white shadow-xl shadow-teal-500/20" : "bg-primary text-white"
+                  }`}
+                >
+                  {copied ? "Synchronized" : "Copy Vector"}
+                </button>
+             </div>
+          </div>
+
+          <div className="p-8 bg-primary/5 border border-primary/10 rounded-[2rem] flex items-start gap-4">
+             <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary flex-shrink-0"><Users size={20} /></div>
+             <div>
+                <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Collaborative Pulse</h4>
+                <p className="text-xs text-muted-foreground font-medium leading-relaxed">Distributing MapOut blueprints helps synchronize elite-tier skills across your professional network.</p>
+             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t p-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 text-gray-700 font-semibold hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Close share modal"
-          >
-            Done
-          </button>
+        <div className="p-8 bg-muted/30 border-t border-border flex justify-end">
+           <button onClick={onClose} className="px-10 py-4 bg-white border border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-muted transition-all">Close Protocol</button>
         </div>
       </div>
     </div>
@@ -147,80 +118,60 @@ export function CollaborationCard({ projectId, projectTitle }) {
   };
 
   return (
-    <div className="bg-white rounded-[10px] p-6 shadow-md">
-      <h3 className="text-lg font-bold mb-4">👥 Collaboration</h3>
+    <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
+      <div className="flex items-center gap-4 mb-10">
+         <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20"><UserPlus size={24} /></div>
+         <h3 className="text-xl font-black tracking-tight">Team Synchronization</h3>
+      </div>
 
-      {/* Invite Section */}
-      <div className="mb-6">
+      <div className="mb-10">
         {showInvite ? (
-          <form onSubmit={handleInvite} className="space-y-3">
+          <form onSubmit={handleInvite} className="space-y-4">
             <input
               type="email"
-              placeholder="friend@example.com"
+              placeholder="vector@network.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--mapout-primary)]"
+              className="w-full p-4 bg-muted/30 border border-border rounded-xl focus:ring-4 focus:ring-primary/10 outline-none font-bold"
               required
-              aria-label="Invite collaborator email"
             />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 bg-[var(--mapout-primary)] text-white py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                Send Invite
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowInvite(false)}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-              >
-                Cancel
-              </button>
+            <div className="flex gap-4">
+              <button type="submit" className="flex-1 py-4 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-teal-500/20">Send Invite</button>
+              <button type="button" onClick={() => setShowInvite(false)} className="flex-1 py-4 bg-muted border border-border text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest">Abort</button>
             </div>
           </form>
         ) : (
           <button
             onClick={() => setShowInvite(true)}
-            className="w-full bg-blue-50 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-100 transition-colors border border-blue-200"
-            aria-label="Invite collaborators"
+            className="w-full py-5 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
           >
-            Invite Collaborators
+            Invite External Vectors
           </button>
         )}
       </div>
 
-      {/* Invited Users */}
       {invited.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-600 uppercase mb-3">Collaborators</p>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">Network Collaborators</h4>
+          <div className="space-y-2">
             {invited.map((collaborator, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={idx} className="flex items-center justify-between p-4 bg-muted/30 border border-border/50 rounded-2xl">
                 <div>
-                  <p className="text-sm font-medium">{collaborator.email}</p>
-                  <p className="text-xs text-gray-600">Invited {collaborator.joinedAt}</p>
+                  <p className="text-xs font-black text-foreground">{collaborator.email}</p>
+                  <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-1">Authorized {collaborator.joinedAt}</p>
                 </div>
-                <button
-                  onClick={() => setInvited(invited.filter((_, i) => i !== idx))}
-                  className="text-red-600 hover:text-red-800 text-xs font-semibold"
-                  aria-label={`Remove ${collaborator.email}`}
-                >
-                  Remove
-                </button>
+                <button onClick={() => setInvited(invited.filter((_, i) => i !== idx))} className="text-[8px] font-black text-rose-500 uppercase tracking-widest hover:underline">Revoke Access</button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Permissions Info */}
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-        <p className="font-semibold text-yellow-900 mb-1">⚙️ Collaboration Settings</p>
-        <p className="text-xs text-yellow-800">
-          Collaborators can view, comment, and edit documents. They'll receive access via email.
-        </p>
-      </div>
+      {!invited.length && (
+         <div className="p-8 bg-muted/30 border border-dashed border-border rounded-[2rem] text-center">
+            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No Collaborators Sync'd</p>
+         </div>
+      )}
     </div>
   );
 }

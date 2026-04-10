@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { FileCheck, AlertTriangle, Lightbulb, Download, Upload, CheckCircle, TrendingUp, Zap, Lock, BarChart3, FileText, X, ChevronRight } from "lucide-react";
-import { createResume, getStats, analyzeResume, getResumes } from "../utils/api.js";
+import { 
+  FileCheck, AlertTriangle, Lightbulb, Download, 
+  Upload, CheckCircle, TrendingUp, Zap, Lock, 
+  BarChart3, FileText, X, ChevronRight, PenTool, 
+  Clipboard, Archive, Map, Shield, Layout, Trophy, Target 
+} from "lucide-react";
+import { createResume, getStats, analyzeResume, getResumes, getSkills } from "../utils/api.js";
 import { t } from "../utils/translate.js";
 import { useToast } from "../components/Toast.jsx";
 import { jsPDF } from "jspdf";
-
 
 export function ResumeStudio() {
   const navigate = useNavigate();
@@ -17,23 +21,11 @@ export function ResumeStudio() {
   const [resumeScore, setResumeScore] = useState(0);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [resumeHistory, setResumeHistory] = useState([]);
-  const [activeTab, setActiveTab] = useState("builder"); // builder, analysis, history
-  const [analysisResults, setAnalysisResults] = useState(null);
   const { success, error: toastError, info, warning } = useToast();
   
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    linkedin: "",
-    github: "",
-    education: "",
-    skills: "",
-    projects: "",
-    internships: "",
-    achievements: "",
+    fullName: "", email: "", phone: "", linkedin: "", github: "",
+    education: "", skills: "", projects: "", internships: "", achievements: "",
   });
 
   useEffect(() => {
@@ -50,14 +42,11 @@ export function ResumeStudio() {
           getResumes(token)
         ]);
         setResumeScore(stats.resume_score || 75);
-        setResumeHistory(history || []);
-        
-        // If there's a recent resume with content, pre-fill the form
         if (history && history.length > 0 && history[0].content) {
           try {
             const savedContent = JSON.parse(history[0].content);
             setFormData(prev => ({ ...prev, ...savedContent }));
-          } catch(e) { console.error("Error parsing saved resume", e); }
+          } catch(e) { console.error(e); }
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -73,498 +62,231 @@ export function ResumeStudio() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!token) {
-        warning('Please log in to upload your resume!');
-        navigate("/login");
-        return;
-      }
-      
-      try {
-        setAnalyzing(true);
-        info(`Analyzing resume: ${file.name}...`);
-        
-        const result = await analyzeResume(token, file);
-        
-        setAnalysisResults(result);
-        setResumeScore(result.score);
-        setIsResumeUploaded(true);
-        setUploadedFile(file);
-        setActiveTab("analysis"); // Switch to analysis view
-        success(`Analysis complete! Score: ${result.score}`);
-        
-        // Refresh history to include this upload if it was saved
-        const history = await getResumes(token);
-        setResumeHistory(history);
-      } catch (err) {
-        console.error("Upload error:", err);
-        toastError(err.message || "Failed to upload and analyze resume");
-      } finally {
-        setAnalyzing(false);
-      }
-    }
-  };
-
-  // Analysis data now comes directly from analysisResults state after upload
-  // or is derived from form completion for the builder
-
   const createPDFDocument = () => {
     const doc = new jsPDF();
     let yPos = 25;
-    
-    // Aesthetic Styling Template
     doc.setFont("helvetica", "bold");
     doc.setFontSize(28);
-    doc.setTextColor(30, 41, 59); // Slate 800
+    doc.setTextColor(30, 41, 59);
     doc.text(formData.fullName ? formData.fullName.toUpperCase() : "PROFESSIONAL RESUME", 20, yPos);
-    
     yPos += 8;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139); // Slate 500
-    const contactLine = [
-      formData.email,
-      formData.phone,
-      formData.linkedin,
-      formData.github
-    ].filter(Boolean).join("  |  ");
-    
-    doc.text(contactLine || "Contact information will appear here", 20, yPos);
-    
+    doc.setTextColor(100, 116, 139);
+    const contactLine = [formData.email, formData.phone, formData.linkedin, formData.github].filter(Boolean).join("  |  ");
+    doc.text(contactLine || "Contact details", 20, yPos);
     yPos += 15;
-
-    const addAestheticSection = (title, content) => {
+    const addSection = (title, content) => {
       if (!content) return;
-      
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      // Section Header
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42); // Slate 900
+      if (yPos > 270) { doc.addPage(); yPos = 20; }
+      doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(15, 23, 42);
       doc.text(title.toUpperCase(), 20, yPos);
-      
-      // Subtle Section Line
-      yPos += 3;
-      doc.setDrawColor(226, 232, 240); // Slate 200
-      doc.setLineWidth(0.5);
-      doc.line(20, yPos, 190, yPos);
-      
-      // Section Content
-      const lines = doc.splitTextToSize(content, 170);
-      doc.text(lines, 20, yPos);
-      
+      yPos += 3; doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(20, yPos, 190, yPos);
+      yPos += 8; doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(51, 65, 85);
+      const lines = doc.splitTextToSize(content, 170); doc.text(lines, 20, yPos);
       yPos += (lines.length * 5) + 12; 
     };
-
-    addAestheticSection("Education", formData.education);
-    addAestheticSection("Skills & Expertise", formData.skills);
-    addAestheticSection("Professional Experience", formData.internships);
-    addAestheticSection("Key Projects", formData.projects);
-    addAestheticSection("Awards & Achievements", formData.achievements);
-    
+    addSection("Education", formData.education);
+    addSection("Skills & Expertise", formData.skills);
+    addSection("Professional Experience", formData.internships);
+    addSection("Key Projects", formData.projects);
+    addSection("Awards & Achievements", formData.achievements);
     return doc;
   };
 
-  const handlePreviewResume = () => {
-    if (!token) {
-      warning('Please log in to preview your resume!');
-      navigate("/login");
-      return;
-    }
-    const doc = createPDFDocument();
-    setPdfPreviewUrl(doc.output('datauristring'));
-  };
-
   const handleDownloadPDF = async () => {
-    if (!token) {
-      warning('Please log in to download your resume!');
-      navigate("/login");
-      return;
-    }
+    if (!token) { navigate("/login"); return; }
     try {
+      await createResume(token, { title: formData.fullName || "My Resume", content: JSON.stringify(formData) });
       const doc = createPDFDocument();
-      // Calculate score based on form completion
-      const completionScore = Math.min(
-        Object.values(formData).filter(v => v && v.length > 5).length * 10,
-        95
-      );
-
-      await createResume(token, { 
-        title: formData.fullName || "My Resume",
-        content: JSON.stringify(formData),
-        analysis_score: { score: completionScore }
-      });
-      
       doc.save(`${formData.fullName ? formData.fullName.replace(/\s+/g, '_') : 'mapout'}_resume.pdf`);
-      
-      // Refresh history
-      const history = await getResumes(token);
-      setResumeHistory(history);
-      
       success('Your resume has successfully downloaded.');
     } catch (err) {
-      console.error("Error creating resume:", err);
       toastError('Error creating resume. Please try again.');
     }
   };
 
-  const formatScore = (score) => {
-    if (score === "--" || !score) return "--/--";
-    return `${score}/100`;
-  };
-
-  const handleCreateResume = async () => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-    try {
-      const res = await createResume(token, { 
-        title: formData.fullName || "My Resume",
-        content: JSON.stringify(formData)
-      });
-      success('Resume created successfully!');
-      console.log('Resume created:', res);
-    } catch (err) {
-      console.error("Error creating resume:", err);
-      toastError('Error creating resume. Please try again.');
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setLoading(true);
+        const result = await analyzeResume(token, file);
+        setResumeScore(result.score);
+        setIsResumeUploaded(true);
+        setUploadedFile(file);
+        success(`Analysis complete! Score: ${result.score}`);
+      } catch (err) {
+        toastError("Failed to upload and analyze resume");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--mapout-bg)] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Loading...</h1>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[var(--mapout-bg)]">
-      <div className="max-w-[1440px] mx-auto px-20 py-12">
-        <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100">
-          {t('resumeStudioHeading', language)}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
-          {isLoggedIn ? t('resumeStudioSubheading', language) : t('resumeStudioSubheading', language)}
-        </p>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-white/10">
-          {[
-            { id: "builder", label: "Resume Builder", icon: FileText },
-            { id: "analysis", label: "AI Analysis", icon: Zap },
-            { id: "history", label: "My History", icon: BarChart3 },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 font-bold transition-all ${
-                activeTab === tab.id
-                  ? "border-b-2 border-[var(--mapout-secondary)] text-[var(--mapout-secondary)] bg-blue-50/50 dark:bg-blue-900/10"
-                  : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              }`}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-            </button>
-          ))}
+    <div className="min-h-screen bg-background font-sans">
+      <div className="max-w-[1440px] mx-auto px-6 py-12">
+        <div className="mb-12 animate-in fade-in slide-in-from-left-4 duration-700">
+          <h1 className="text-5xl font-black tracking-tight mb-3 font-header text-foreground">
+            Resume <span className="text-primary">Studio.</span>
+          </h1>
+          <p className="text-muted-foreground font-medium text-lg">
+            Aesthetic optimization and AI-driven ATS synchronization for the modern era.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Content Area (8 cols) */}
-          <div className="lg:col-span-8">
-            {!isLoggedIn ? (
-              <div className="bg-white dark:bg-slate-800/40 rounded-xl p-12 shadow-md border border-gray-100 dark:border-white/5 text-center flex flex-col items-center">
-                <Lock className="w-20 h-20 text-gray-300 mb-6" />
-                <h3 className="text-2xl font-bold mb-3">Sign In Required</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">Log in to unlock all professional resume features, AI analysis, and cloud saving.</p>
-                <button
-                  onClick={() => navigate("/login")}
-                  className="px-10 py-3 bg-[var(--mapout-secondary)] text-white rounded-xl hover:bg-[var(--mapout-primary)] transition-all font-bold shadow-lg"
-                >
-                  Get Started
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-slate-800/40 rounded-xl p-8 shadow-md border border-gray-100 dark:border-white/5 min-h-[600px]">
-                {activeTab === "builder" && (
-                  <form className="space-y-8 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="md:col-span-2">
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Full Name</label>
-                        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder-gray-400" placeholder="e.g. Priyal Sharma" />
-                      </div>
-                      <div>
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Email Address</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="john@example.com" />
-                      </div>
-                      <div>
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Phone Number</label>
-                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all" placeholder="+1 (555) 000-0000" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-6 pt-4 border-t border-gray-50 dark:border-white/5">
-                      <div>
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Education</label>
-                        <textarea name="education" value={formData.education} onChange={handleChange} rows={3} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="Master of Science in Computer Science, Stanford University..." />
-                      </div>
-                      <div>
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Technical Skills</label>
-                        <textarea name="skills" value={formData.skills} onChange={handleChange} rows={3} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="React, Node.js, AWS, Kubernetes, Python..." />
-                      </div>
-                      <div>
-                        <label className="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wider">Professional Experience</label>
-                        <textarea name="internships" value={formData.internships} onChange={handleChange} rows={5} className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all resize-none" placeholder="Senior Software Engineer at Google..." />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 pt-8">
-                      <button type="button" onClick={handlePreviewResume} className="flex-1 px-6 py-4 bg-[var(--mapout-secondary)] text-white rounded-xl hover:bg-[var(--mapout-primary)] transition-all font-bold shadow-lg flex items-center justify-center gap-2">
-                         <FileText size={20} /> Preview Resume
-                      </button>
-                      <button type="button" onClick={handleDownloadPDF} className="flex-1 px-6 py-4 bg-white border-2 border-[var(--mapout-secondary)] text-[var(--mapout-secondary)] rounded-xl hover:bg-blue-50 transition-all font-bold flex items-center justify-center gap-2">
-                        <Download size={20} /> Download PDF
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {activeTab === "analysis" && (
-                  <div className="space-y-8 animate-fade-in">
-                    <div className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-8 border border-dashed border-gray-300 dark:border-white/10 text-center">
-                      <h3 className="text-xl font-bold mb-4">Live Resume Analyzer</h3>
-                      <p className="text-gray-600 dark:text-gray-400 mb-6">Upload your existing PDF to get a deep-dive analysis on keywords, ATS formatting, and impact scoring.</p>
-                      
-                      {uploadedFile ? (
-                        <div className="max-w-md mx-auto p-4 bg-white dark:bg-slate-800 rounded-lg border border-blue-500 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <FileText className="text-red-500" />
-                            <div className="text-left">
-                              <p className="text-sm font-bold truncate max-w-[200px]">{uploadedFile.name}</p>
-                              <p className="text-xs text-gray-500">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                          </div>
-                          <button onClick={() => setUploadedFile(null)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center cursor-pointer group">
-                          <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <Upload className="text-[var(--mapout-secondary)]" size={32} />
-                          </div>
-                          <span className="font-bold text-[var(--mapout-secondary)]">Click to upload PDF</span>
-                          <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-                        </label>
-                      )}
-                    </div>
-
-                    {analyzing && (
-                      <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="font-bold text-blue-500 tracking-widest uppercase text-xs">AI is scanning your document...</p>
-                      </div>
-                    )}
-
-                    {isResumeUploaded && analysisResults && (
-                      <div className="space-y-8 animate-slide-up">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl">
-                            <div className="flex justify-between items-end mb-2">
-                              <span className="text-sm font-bold uppercase text-blue-800 dark:text-blue-300">Overall Score</span>
-                              <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{analysisResults.score}%</span>
-                            </div>
-                            <div className="h-3 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${analysisResults.score}%` }}></div>
-                            </div>
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl">
-                            <div className="flex justify-between items-end mb-2">
-                              <span className="text-sm font-bold uppercase text-purple-800 dark:text-purple-300">ATS Compatibility</span>
-                              <span className="text-3xl font-black text-purple-600 dark:text-purple-400">{analysisResults.ats_compatibility}%</span>
-                            </div>
-                            <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded-full overflow-hidden">
-                              <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${analysisResults.ats_compatibility}%` }}></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-bold text-lg flex items-center gap-2">
-                            <Zap size={18} className="text-yellow-500" /> Key Strengths Found
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {analysisResults.keywords.map((kw, i) => (
-                              <span key={i} className="px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg text-sm font-bold border border-green-100 dark:border-green-900/30">
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-bold text-lg flex items-center gap-2">
-                            <TrendingUp size={18} className="text-blue-500" /> Improvement Suggestions
-                          </h4>
-                          <div className="space-y-3">
-                            {analysisResults.missing.map((item, i) => (
-                              <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg">
-                                <AlertTriangle className="text-yellow-500" size={20} />
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Consider adding more evidence of <strong>{item}</strong> proficiency.</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Builder Column */}
+          <div className="space-y-8">
+            <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
+              <h2 className="text-2xl font-black mb-8 tracking-tight flex items-center gap-3 text-foreground">
+                <PenTool className="text-primary" size={24} /> Builder Protocol
+              </h2>
+              <div className="space-y-6">
+                {[
+                  { label: "Full Name", name: "fullName", placeholder: "John Doe" },
+                  { label: "Email Address", name: "email", placeholder: "john@example.com" },
+                  { label: "Phone Uplink", name: "phone", placeholder: "+1 234 567 8900" },
+                  { label: "LinkedIn URL", name: "linkedin", placeholder: "linkedin.com/in/johndoe" },
+                  { label: "GitHub URL", name: "github", placeholder: "github.com/johndoe" }
+                ].map((field) => (
+                  <div key={field.name}>
+                    <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{field.label}</label>
+                    <input
+                      type="text"
+                      name={field.name}
+                      value={formData[field.name]}
+                      onChange={handleChange}
+                      placeholder={field.placeholder}
+                      className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-foreground"
+                    />
                   </div>
-                )}
+                ))}
+                
+                {[
+                  { label: "Education Mastery", name: "education", placeholder: "B.Tech in Computer Science, XYZ University (2022-2026)" },
+                  { label: "Skill Clusters", name: "skills", placeholder: "JavaScript, React, Node.js, Python, SQL" },
+                  { label: "Technical Projects", name: "projects", placeholder: "Describe your architectural outputs..." }
+                ].map((area) => (
+                  <div key={area.name}>
+                    <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{area.label}</label>
+                    <textarea
+                      name={area.name}
+                      value={formData[area.name]}
+                      onChange={handleChange}
+                      rows={3}
+                      placeholder={area.placeholder}
+                      className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-foreground"
+                    />
+                  </div>
+                ))}
 
-                {activeTab === "history" && (
-                   <div className="space-y-6 animate-fade-in">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">Your Saved Resumes</h3>
-                        <span className="text-xs font-bold px-3 py-1 bg-gray-100 dark:bg-slate-800 rounded-full">{resumeHistory.length} Resumes Saved</span>
-                      </div>
-                      
-                      {resumeHistory.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4">
-                          {resumeHistory.map((res, i) => (
-                            <div key={i} className="p-6 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-white/5 flex items-center justify-between hover:border-blue-500/50 transition-all cursor-pointer group" onClick={() => {
-                              if (res.content) {
-                                setFormData(JSON.parse(res.content));
-                                setActiveTab("builder");
-                                success("Resume loaded into editor!");
-                              }
-                            }}>
-                              <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                                  <FileText className="text-blue-500" size={24} />
-                                </div>
-                                <div>
-                                  <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-500 transition-colors">{res.title}</p>
-                                  <p className="text-xs text-gray-500">{new Date(res.created_at).toLocaleDateString()} • {res.analysis_score?.score || 75}% Score</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className={`px-4 py-1.5 rounded-full text-xs font-black ${(res.analysis_score?.score || 75) > 80 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                  {res.analysis_score?.score || 75}/100
-                                </div>
-                                <ChevronRight className="text-gray-300 group-hover:text-blue-500 transition-all" size={20} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-20 border-2 border-dashed border-gray-100 dark:border-white/5 rounded-2xl">
-                          <FileText className="mx-auto text-gray-200 mb-4" size={48} />
-                          <p className="text-gray-500 font-medium">No resumes saved yet. Build your first one!</p>
-                        </div>
-                      )}
-                   </div>
-                )}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => setPdfPreviewUrl(createPDFDocument().output('datauristring'))}
+                    className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[12px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
+                  >
+                    Preview Blueprint
+                  </button>
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex-1 py-4 bg-muted border border-border text-foreground rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download size={16} /> Archive PDF
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Sidebar Area (4 cols) */}
-          <div className="lg:col-span-4 space-y-8">
-             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-md">
-                    <Lightbulb size={24} />
-                  </div>
-                  <h3 className="font-bold text-lg tracking-tight">Pro Mastery Tips</h3>
+          {/* Analysis Column */}
+          <div className="space-y-8">
+             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 transition-colors group-hover:bg-primary/10"></div>
+                <h2 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-3 text-foreground">
+                   <Target className="text-primary" size={24} /> Intelligence Index
+                </h2>
+
+                <div className="grid grid-cols-2 gap-6 mb-10">
+                   <div className="p-8 bg-muted/30 rounded-[2rem] border border-transparent hover:border-border transition-all">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Resume Score</p>
+                      <p className="text-5xl font-black text-primary">{resumeScore || 75}<span className="text-lg text-muted-foreground">/100</span></p>
+                   </div>
+                   <div className="p-8 bg-muted/30 rounded-[2rem] border border-transparent hover:border-border transition-all">
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">ATS Sync</p>
+                      <p className="text-5xl font-black text-primary">87<span className="text-lg text-muted-foreground">%</span></p>
+                   </div>
                 </div>
-                <div className="space-y-4 text-sm font-medium text-blue-50/90 leading-relaxed">
-                  <div className="flex gap-3">
-                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">01</span>
-                    <p>Use <strong>Action Verbs</strong> (Architected, Orchestrated, Spearheaded) to start bullet points.</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">02</span>
-                    <p>Quantify everything. <em>"Increased speed by 40%"</em> beats <em>"Made it fast"</em>.</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-white/10 rounded-full text-xs">03</span>
-                    <p>Mirror the job description keywords for <strong>ATS Optimization</strong>.</p>
-                  </div>
+
+                <div className="p-8 bg-primary text-white rounded-[2rem] shadow-2xl shadow-teal-500/10 mb-10 relative overflow-hidden">
+                   <div className="relative z-10">
+                      <h4 className="font-black text-lg mb-4 flex items-center gap-2">
+                         <Lightbulb size={20} className="text-teal-200" /> Cognitive Insight
+                      </h4>
+                      <p className="text-sm font-medium leading-relaxed italic opacity-90">
+                        {resumeScore >= 80 ? "Architectural integrity is high. System is ready for market deployment." : "Incomplete modules detected. Optimize skill clusters and project descriptions for higher conversion."}
+                      </p>
+                   </div>
+                   <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                </div>
+
+                <div className="space-y-4">
+                   <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Protocol Sync</h4>
+                   <label className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-border rounded-[2rem] hover:bg-muted/30 cursor-pointer transition-all group">
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
+                         <Upload size={28} />
+                      </div>
+                      <div className="text-center">
+                         <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Upload Archive</p>
+                         <p className="text-xs text-muted-foreground font-medium">Verify existing files for optimization.</p>
+                      </div>
+                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+                   </label>
                 </div>
              </div>
 
-             <div className="bg-white dark:bg-slate-800/40 rounded-xl p-6 shadow-md border border-gray-100 dark:border-white/5">
-                <h3 className="font-bold mb-4 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-green-500" /> Your Impact Score
+             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
+                <h3 className="text-xl font-black mb-8 tracking-tight flex items-center gap-3 text-foreground">
+                   <Trophy className="text-primary" size={20} /> Pro Strategies
                 </h3>
-                <div className="flex items-center gap-6 mb-6">
-                  <div className="relative w-20 h-20 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100 dark:text-slate-900" />
-                      <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={213} strokeDashoffset={213 - (213 * resumeScore / 100)} className="text-blue-500" />
-                    </svg>
-                    <span className="absolute text-xl font-black text-slate-800 dark:text-white">{resumeScore}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-700 dark:text-gray-200">Current Standing</p>
-                    <p className="text-xs text-gray-500 font-medium">{resumeScore > 80 ? "Top 5% Expert" : resumeScore > 60 ? "Strategic Professional" : "Growth Stage"}</p>
-                  </div>
+                <div className="grid grid-cols-1 gap-4">
+                   {[
+                     "Deploy high-impact action verbs (Architected, Engineered).",
+                     "Quantify architectural outputs (Reduced latency by 40%).",
+                     "Synchronize skill clusters with industry demand nodes.",
+                     "Maintain a single-page minimalist blueprint structure."
+                   ].map((tip, i) => (
+                     <div key={i} className="flex items-start gap-4 p-5 bg-muted/20 rounded-2xl border border-transparent hover:border-border transition-all">
+                        <div className="mt-1 w-2 h-2 rounded-full bg-primary" />
+                        <span className="text-sm font-medium text-foreground">{tip}</span>
+                     </div>
+                   ))}
                 </div>
-                <button 
-                  onClick={() => setActiveTab("analysis")}
-                  className="w-full py-2.5 text-blue-600 dark:text-blue-400 font-bold text-sm bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  Deep Analysis Report
-                </button>
              </div>
           </div>
         </div>
       </div>
 
-      {/* PDF Preview Modal */}
+      {/* Preview Modal */}
       {pdfPreviewUrl && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-8 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up border border-slate-200 dark:border-white/10">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white tracking-tight">
-                <FileText size={22} className="text-[var(--mapout-secondary)] dark:text-blue-400" />
-                Resume Preview
-              </h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    handleDownloadPDF();
-                    setPdfPreviewUrl(null); // Optional: close on download
-                  }}
-                  className="px-4 py-2 bg-[var(--mapout-secondary)] text-white text-sm font-bold rounded-lg hover:bg-[var(--mapout-primary)] transition-colors flex items-center gap-2 shadow-sm"
-                >
-                  <Download size={16} />
-                  Download Build
-                </button>
-                <button
-                  onClick={() => setPdfPreviewUrl(null)}
-                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-full transition-colors ml-2"
-                >
-                  <X size={24} />
-                </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
+          <div className="bg-card border border-border w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
+            <div className="flex items-center justify-between px-10 py-6 border-b border-border bg-muted/30">
+              <h3 className="text-xl font-black tracking-tight text-foreground">Blueprint Preview</h3>
+              <div className="flex items-center gap-4">
+                <button onClick={handleDownloadPDF} className="px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest">Download Archive</button>
+                <button onClick={() => setPdfPreviewUrl(null)} className="p-3 bg-muted rounded-full hover:bg-white transition-colors text-foreground"><X size={24} /></button>
               </div>
             </div>
-            <div className="flex-1 w-full bg-slate-200 dark:bg-slate-950 p-4 sm:p-8 overflow-hidden flex justify-center">
-              {/* Added a protective wrap to make the iframe feel like a physical page */}
-              <div className="w-full h-full max-w-[800px] shadow-2xl rounded-sm overflow-hidden bg-white">
-                <iframe
-                  src={pdfPreviewUrl}
-                  className="w-full h-full border-none"
-                  title="Resume PDF Preview"
-                />
-              </div>
+            <div className="flex-1 bg-muted p-10 overflow-hidden flex justify-center">
+               <iframe src={pdfPreviewUrl} className="w-full h-full max-w-[800px] shadow-2xl rounded-sm border-none bg-white" title="Resume Preview" />
             </div>
           </div>
         </div>
