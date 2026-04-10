@@ -165,19 +165,6 @@ export function CareerPlanner() {
               Map your professional trajectory with precision-engineered roadmaps and strategic skill benchmarks.
             </p>
           </div>
-          
-          <div className="inline-flex p-1.5 bg-muted rounded-2xl border border-border shadow-sm">
-             {['Explore', 'Analyze', 'Verify'].map((tab, idx) => (
-                <button
-                  key={tab}
-                  className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                    activeStep === (idx + 1) ? 'bg-white text-primary shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {tab}
-                </button>
-             ))}
-          </div>
         </div>
 
         {/* Path Selection Blocks */}
@@ -328,7 +315,7 @@ export function CareerPlanner() {
                  </div>
                  <div className="flex items-center gap-4">
                     <div className="text-right">
-                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Overall Alignment</p>
+                       <p className="text-[10px) font-black text-muted-foreground uppercase tracking-widest mb-1">Overall Alignment</p>
                        <p className="text-2xl font-black text-primary">32.4%</p>
                     </div>
                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
@@ -381,7 +368,6 @@ export function CareerPlanner() {
               </div>
            ))}
         </div>
-
       </div>
     </div>
   );

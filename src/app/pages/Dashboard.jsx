@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { 
-  FileCheck, Award, AlertCircle, Briefcase, 
-  Search as SearchIcon, X, ExternalLink, TrendingUp, 
-  Calendar, Target, BarChart3, Lightbulb, Trophy, 
-  GraduationCap, Zap, BookOpen, MapPin, Tag, ArrowRight 
+import {
+  FileCheck, Award, AlertCircle, Briefcase,
+  Search as SearchIcon, X, ExternalLink, TrendingUp,
+  Calendar, Target, BarChart3, Lightbulb, Trophy,
+  GraduationCap, Zap, BookOpen, MapPin, Tag, ArrowRight
 } from "lucide-react";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, LineChart, Line, 
-  PieChart, Pie, Cell 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, LineChart, Line,
+  PieChart, Pie, Cell
 } from "recharts";
 import { api, getStats, getDetailedDashboardData } from "../utils/api.js";
 import { t } from "../utils/translate.js";
@@ -49,14 +49,14 @@ export function Dashboard() {
   const [hasSearched, setHasSearched] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const token = localStorage.getItem("token");
   const language = localStorage.getItem("language") || "English";
   const { error: toastError } = useToast();
 
   useEffect(() => {
     if (!token) {
-      navigate("/login");
+      setLoading(false);
       return;
     }
 
@@ -112,7 +112,7 @@ export function Dashboard() {
               Precision-monitored metrics for your professional trajectory.
             </p>
           </div>
-          
+
           <form onSubmit={handleSearch} className="relative w-full md:w-96 group">
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
             <input
@@ -129,18 +129,18 @@ export function Dashboard() {
         {hasSearched && (
           <div className="mb-16 animate-in fade-in zoom-in-95 duration-300 bg-card border border-border rounded-[2.5rem] p-10">
             <div className="flex items-center justify-between mb-8">
-               <h2 className="text-2xl font-black">Search Results</h2>
-               <button onClick={() => setHasSearched(false)} className="text-primary font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:underline">
-                 <X size={16} /> Clear Protocol
-               </button>
+              <h2 className="text-2xl font-black">Search Results</h2>
+              <button onClick={() => setHasSearched(false)} className="text-primary font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:underline">
+                <X size={16} /> Clear Protocol
+              </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {results.map((res, i) => (
-                 <div key={i} onClick={() => navigate(res.path)} className="p-6 bg-muted/30 border border-transparent hover:border-border hover:bg-white rounded-2xl transition-all cursor-pointer group">
-                    <h4 className="font-bold text-foreground mb-1 group-hover:text-primary transition-colors">{res.title}</h4>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{res.type}</p>
-                 </div>
-               ))}
+              {results.map((res, i) => (
+                <div key={i} onClick={() => navigate(res.path)} className="p-6 bg-muted/30 border border-transparent hover:border-border hover:bg-white rounded-2xl transition-all cursor-pointer group">
+                  <h4 className="font-bold text-foreground mb-1 group-hover:text-primary transition-colors">{res.title}</h4>
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{res.type}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -172,15 +172,15 @@ export function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '16px', color: '#F8FAFC', padding: '12px' }}
                     itemStyle={{ color: '#F8FAFC' }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="var(--mapout-primary)" 
-                    strokeWidth={5} 
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="var(--mapout-primary)"
+                    strokeWidth={5}
                     dot={{ r: 6, fill: 'var(--mapout-primary)', strokeWidth: 3, stroke: '#FFFFFF' }}
                     activeDot={{ r: 9, fill: 'var(--mapout-primary)' }}
                   />
@@ -188,14 +188,14 @@ export function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="mt-8 p-6 bg-muted/30 rounded-2xl border border-transparent italic text-sm text-muted-foreground font-medium">
-               "Intelligence metrics show a 20-point increase in system alignment over 5 cycles."
+              "Intelligence metrics show a 20-point increase in system alignment over 5 cycles."
             </div>
           </div>
 
           {/* Time Distribution Chart */}
           <div className="bg-card border border-border rounded-[3rem] p-12 shadow-sm relative overflow-hidden group">
             <h3 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-4">
-               <PieChart className="text-primary" /> Resource Allocation
+              <PieChart className="text-primary" /> Resource Allocation
             </h3>
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -213,19 +213,19 @@ export function Dashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '16px', color: '#F8FAFC' }}
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#ffffffff', border: 'none', borderRadius: '16px', color: '#F8FAFC' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="flex flex-wrap justify-center gap-6 mt-4">
-               {timeSpentData.map((d, i) => (
-                 <div key={i} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{d.name}</span>
-                 </div>
-               ))}
+              {timeSpentData.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{d.name}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -233,21 +233,21 @@ export function Dashboard() {
         {/* Skill Matrix Comparison */}
         <div className="bg-card border border-border rounded-[3rem] p-12 lg:p-16 shadow-sm mb-16">
           <div className="flex justify-between items-end mb-12">
-             <div>
-                <h3 className="text-3xl font-black mb-2 tracking-tight">Competency Matrix</h3>
-                <p className="text-muted-foreground font-medium">Comparative analysis of current skillset vs. target benchmarks.</p>
-             </div>
-             <BarChart3 className="text-primary opacity-20" size={60} />
+            <div>
+              <h3 className="text-3xl font-black mb-2 tracking-tight">Competency Matrix</h3>
+              <p className="text-muted-foreground font-medium">Comparative analysis of current skillset vs. target benchmarks.</p>
+            </div>
+            <BarChart3 className="text-primary opacity-20" size={60} />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
             {skillProgressData.map((skill, idx) => (
               <div key={idx} className="group">
                 <div className="flex justify-between items-end mb-4">
                   <span className="text-lg font-black tracking-tight">{skill.skill}</span>
                   <div className="text-right">
-                     <span className="text-xs font-black text-primary uppercase tracking-widest block mb-1">{skill.progress}% Mastery</span>
-                     <span className="text-[10px] text-muted-foreground font-bold">Target Index: {skill.target}%</span>
+                    <span className="text-xs font-black text-primary uppercase tracking-widest block mb-1">{skill.progress}% Mastery</span>
+                    <span className="text-[10px] text-muted-foreground font-bold">Target Index: {skill.target}%</span>
                   </div>
                 </div>
                 <div className="relative h-2 bg-muted rounded-full overflow-hidden shadow-inner">
@@ -267,40 +267,40 @@ export function Dashboard() {
 
         {/* Recent Strategy Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-           <div className="bg-primary text-white rounded-[2.5rem] p-12 shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-              <h3 className="text-2xl font-black mb-10 tracking-tight">Autonomous Strategy</h3>
-              <div className="space-y-6">
-                 {[
-                   { title: "Optimize Resume", path: "/resume-studio", desc: "Detected 4 missing technical keywords for target role." },
-                   { title: "Sync Skill Node", path: "/career-planner", desc: "Docker & K8s mastery recommended for evolution." },
-                   { title: "Execute Project", path: "/projects", desc: "New API Architecture blueprint aligned with current profile." }
-                 ].map((act, i) => (
-                   <div key={i} onClick={() => navigate(act.path)} className="p-6 bg-white/10 rounded-2xl border border-white/5 hover:bg-white/20 transition-all cursor-pointer group/item">
-                      <div className="flex justify-between items-center">
-                         <div>
-                            <h4 className="font-black text-lg mb-1">{act.title}</h4>
-                            <p className="text-sm text-teal-50/70 font-medium">{act.desc}</p>
-                         </div>
-                         <ArrowRight className="group-hover/item:translate-x-2 transition-transform" size={20} />
-                      </div>
-                   </div>
-                 ))}
-              </div>
-           </div>
+          <div className="bg-primary text-white rounded-[2.5rem] p-12 shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+            <h3 className="text-2xl font-black mb-10 tracking-tight">Autonomous Strategy</h3>
+            <div className="space-y-6">
+              {[
+                { title: "Optimize Resume", path: "/resume-studio", desc: "Detected 4 missing technical keywords for target role." },
+                { title: "Sync Skill Node", path: "/career-planner", desc: "Docker & K8s mastery recommended for evolution." },
+                { title: "Execute Project", path: "/projects", desc: "New API Architecture blueprint aligned with current profile." }
+              ].map((act, i) => (
+                <div key={i} onClick={() => navigate(act.path)} className="p-6 bg-white/10 rounded-2xl border border-white/5 hover:bg-white/20 transition-all cursor-pointer group/item">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-black text-lg mb-1">{act.title}</h4>
+                      <p className="text-sm text-teal-50/70 font-medium">{act.desc}</p>
+                    </div>
+                    <ArrowRight className="group-hover/item:translate-x-2 transition-transform" size={20} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-           <div className="bg-card border border-border border-dashed rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-8 animate-bounce">
-                 <Trophy size={40} />
-              </div>
-              <h3 className="text-3xl font-black mb-4 tracking-tight">System Honor</h3>
-              <p className="text-muted-foreground font-medium max-w-sm mb-10 leading-relaxed">
-                 You are in the <span className="text-primary font-bold">top 5%</span> of active career architects this cycle. System performance is optimal.
-              </p>
-              <button onClick={() => navigate("/profile")} className="text-primary font-black text-[12px] uppercase tracking-widest underline decoration-2 underline-offset-8 hover:text-foreground transition-colors">
-                 View Detailed Governance
-              </button>
-           </div>
+          <div className="bg-card border border-border border-dashed rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-8 animate-bounce">
+              <Trophy size={40} />
+            </div>
+            <h3 className="text-3xl font-black mb-4 tracking-tight">System Honor</h3>
+            <p className="text-muted-foreground font-medium max-w-sm mb-10 leading-relaxed">
+              You are in the <span className="text-primary font-bold">top 5%</span> of active career architects this cycle. System performance is optimal.
+            </p>
+            <button onClick={() => navigate("/profile")} className="text-primary font-black text-[12px] uppercase tracking-widest underline decoration-2 underline-offset-8 hover:text-foreground transition-colors">
+              View Detailed Governance
+            </button>
+          </div>
         </div>
       </div>
     </div>

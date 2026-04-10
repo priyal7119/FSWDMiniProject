@@ -100,47 +100,45 @@ export function Bookmarks() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1440px] mx-auto px-20 py-12">
+      <div className="max-w-6xl mx-auto px-6 md:px-12 py-16">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
-          <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-             <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-teal-500/20">
-                   <Archive size={24} />
-                </div>
-                <h2 className="text-xl font-black tracking-tight text-foreground">Archive Vault</h2>
-             </div>
-            <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tight mb-4 leading-none">
-              Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--mapout-primary)] to-[var(--mapout-secondary)]">Library.</span>
-            </h1>
-            <p className="text-muted-foreground font-medium max-w-xl text-lg">
-              Manage and scale your personal knowledge repository of high-impact career resources.
-            </p>
-          </div>
+        <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+           <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-500/10">
+                 <Archive size={20} />
+              </div>
+              <h2 className="text-sm font-black tracking-widest text-muted-foreground uppercase">Archive Vault</h2>
+           </div>
+           <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight mb-4">
+            Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">Personal Library.</span>
+           </h1>
+           <p className="text-muted-foreground font-medium max-w-lg text-base">
+            Manage and access your curated repository of high-impact career resources and milestones.
+           </p>
 
-          {!token && (
+           {!token && (
              <button
                onClick={() => navigate("/login")}
-               className="px-10 py-5 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
+               className="mt-8 px-8 py-4 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
              >
                Sign In to Architect
              </button>
-          )}
+           )}
         </div>
 
         {token && (
-          <div className="space-y-12">
+          <div className="space-y-10">
             
             {/* Filter & View Mode */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-8 bg-card border border-border rounded-[2.5rem] shadow-sm gap-8">
-               <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-card border border-border p-2 rounded-2xl shadow-sm gap-4">
+               <div className="flex p-1 gap-1">
                   {['all', 'project', 'course', 'faq'].map((filter) => (
                      <button
                        key={filter}
                        onClick={() => setActiveFilter(filter)}
-                       className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                         activeFilter === filter ? 'bg-primary text-white shadow-lg' : 'bg-muted text-muted-foreground hover:bg-white'
+                       className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                         activeFilter === filter ? 'bg-primary text-white shadow-md' : 'text-muted-foreground hover:bg-muted'
                        }`}
                      >
                         {filter}
@@ -148,37 +146,37 @@ export function Bookmarks() {
                   ))}
                </div>
 
-               <div className="flex items-center gap-2 p-1.5 bg-muted rounded-2xl border border-border">
+               <div className="flex items-center gap-1 p-1 bg-muted rounded-xl border border-border mr-1">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                     <LayoutGrid size={20} />
+                     <LayoutGrid size={18} />
                   </button>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
+                    className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                     <Rows size={20} />
+                     <Rows size={18} />
                   </button>
                </div>
             </div>
 
             {/* Content View */}
             {viewMode === 'grid' ? (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in duration-700">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-700">
                   {filteredItems.map((item) => (
-                     <div key={item.id} className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:shadow-teal-500/5 transition-all group flex flex-col relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
+                     <div key={item.id} className="bg-card border border-border rounded-[2rem] p-8 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all group flex flex-col relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary/10 transition-colors" />
                         
-                        <div className="flex justify-between items-start mb-10">
-                           <div className="w-14 h-14 bg-white border border-border rounded-2xl flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="flex justify-between items-center mb-8">
+                           <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                               {getTypeIcon(item.type)}
                            </div>
                            <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                 <button className="p-3 rounded-xl bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-all">
-                                    <Trash2 size={20} />
+                                 <button className="p-2.5 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100">
+                                    <Trash2 size={18} />
                                  </button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="bg-card border-border rounded-[2rem]">
@@ -194,51 +192,51 @@ export function Bookmarks() {
                            </AlertDialog>
                         </div>
 
-                        <div className="mb-6">
-                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-current shadow-sm ${getTypeColor(item.type)}`}>
+                        <div className="mb-4">
+                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-current shadow-sm ${getTypeColor(item.type)}`}>
                               {item.type}
                            </span>
                         </div>
 
-                        <h3 className="text-2xl font-black text-foreground mb-4 tracking-tight leading-tight">
+                        <h3 className="text-xl font-black text-foreground mb-3 tracking-tight leading-tight group-hover:text-primary transition-colors">
                            {item.title}
                         </h3>
-                        <p className="text-muted-foreground leading-relaxed font-medium mb-10 text-sm line-clamp-2">
+                        <p className="text-muted-foreground leading-relaxed font-medium mb-8 text-xs line-clamp-3">
                            {item.description}
                         </p>
 
-                        <div className="mt-auto pt-8 border-t border-border flex items-center justify-between">
-                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Archived {item.savedDate || 'Recent'}</span>
+                        <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
+                           <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Saved {item.savedDate || 'Recently'}</span>
                            <button 
                              onClick={() => handleOpen(item)}
-                             className="p-3 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                             className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
                            >
-                              <ExternalLink size={18} />
+                              <ExternalLink size={16} />
                            </button>
                         </div>
                      </div>
                   ))}
                </div>
             ) : (
-               <div className="space-y-4 animate-in fade-in duration-700">
+               <div className="space-y-3 animate-in fade-in duration-700">
                   {filteredItems.map((item) => (
-                     <div key={item.id} className="bg-card border border-border rounded-[2rem] p-6 group flex items-center justify-between hover:bg-muted/30 transition-all">
-                        <div className="flex items-center gap-8 flex-1">
-                           <div className="w-14 h-14 bg-white border border-border rounded-xl flex items-center justify-center shadow-sm">
+                     <div key={item.id} className="bg-card border border-border rounded-2xl p-4 md:p-5 group flex items-center justify-between hover:bg-muted/30 hover:border-primary/20 transition-all">
+                        <div className="flex items-center gap-6 flex-1 min-w-0">
+                           <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center text-primary shrink-0">
                               {getTypeIcon(item.type)}
                            </div>
-                           <div>
-                              <div className="flex items-center gap-3 mb-1">
-                                 <h3 className="font-black text-lg text-foreground tracking-tight">{item.title}</h3>
-                                 <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-current ${getTypeColor(item.type)}`}>{item.type}</span>
+                           <div className="min-w-0">
+                              <div className="flex items-center gap-3 mb-0.5">
+                                 <h3 className="font-black text-base text-foreground tracking-tight truncate group-hover:text-primary transition-colors">{item.title}</h3>
+                                 <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border border-current ${getTypeColor(item.type)}`}>{item.type}</span>
                               </div>
-                              <p className="text-sm text-muted-foreground font-medium line-clamp-1">{item.description}</p>
+                              <p className="text-xs text-muted-foreground font-medium line-clamp-1">{item.description}</p>
                            </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                           <button onClick={() => handleOpen(item)} className="p-3 text-primary hover:bg-primary/10 rounded-xl transition-all"><ExternalLink size={20} /></button>
-                           <button className="p-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-xl transition-all"><Trash2 size={20} /></button>
+                        <div className="flex items-center gap-2 ml-4">
+                           <button onClick={() => handleOpen(item)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all"><ExternalLink size={18} /></button>
+                           <button className="p-2 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
                         </div>
                      </div>
                   ))}
@@ -246,10 +244,12 @@ export function Bookmarks() {
             )}
 
             {filteredItems.length === 0 && (
-               <div className="py-24 bg-muted/30 border border-border border-dashed rounded-[3rem] text-center">
-                  <Bookmark size={40} className="mx-auto mb-6 text-muted-foreground opacity-30" />
-                  <h3 className="text-xl font-black mb-2">Archive empty.</h3>
-                  <p className="text-muted-foreground font-medium">Synchronize high-impact resources through the Dashboard or Projects portal.</p>
+               <div className="py-20 bg-muted/20 border-2 border-dashed border-border rounded-[2.5rem] text-center">
+                  <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6 text-muted-foreground opacity-30">
+                    <Bookmark size={32} />
+                  </div>
+                  <h3 className="text-xl font-black mb-2 tracking-tight">Library synchronized.</h3>
+                  <p className="text-muted-foreground font-medium text-sm">Your vault is ready for high-impact resources. Bookmark components to see them here.</p>
                </div>
             )}
 

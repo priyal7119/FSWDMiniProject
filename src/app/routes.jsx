@@ -11,6 +11,7 @@ import { Login } from "./pages/Login";
 import About from "./pages/About";
 import { Profile } from "./pages/Profile";
 import { Bookmarks } from "./pages/Bookmarks";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -18,16 +19,23 @@ export const router = createBrowserRouter([
     Component: Root,
     children: [
       { index: true, Component: Home },
-      { path: "dashboard", Component: Dashboard },
-      { path: "resume-studio", Component: ResumeStudio },
-      { path: "career-planner", Component: CareerPlanner },
-      { path: "projects", Component: Projects },
-      { path: "research-guide", Component: ResearchGuide },
-      { path: "interview-faqs", Component: InterviewFAQs },
-      { path: "bookmarks", Component: Bookmarks },
       { path: "login", Component: Login },
       { path: "about", Component: About },
-      { path: "profile", Component: Profile },
+      { path: "dashboard", Component: Dashboard },
+      { path: "research-guide", Component: ResearchGuide },
+      { path: "interview-faqs", Component: InterviewFAQs },
+
+      // Protected Routes
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: "resume-studio", Component: ResumeStudio },
+          { path: "career-planner", Component: CareerPlanner },
+          { path: "projects", Component: Projects },
+          { path: "bookmarks", Component: Bookmarks },
+          { path: "profile", Component: Profile },
+        ],
+      },
     ],
   },
 ]);

@@ -4,7 +4,7 @@ import {
   FileCheck, AlertTriangle, Lightbulb, Download, 
   Upload, CheckCircle, TrendingUp, Zap, Lock, 
   BarChart3, FileText, X, ChevronRight, PenTool, 
-  Clipboard, Archive, Map, Shield, Layout, Trophy, Target 
+  Clipboard, Archive, Map, Shield, Layout, Trophy, Target, Search 
 } from "lucide-react";
 import { createResume, getStats, analyzeResume, getResumes, getSkills } from "../utils/api.js";
 import { t } from "../utils/translate.js";
@@ -19,14 +19,30 @@ export function ResumeStudio() {
   const [isResumeUploaded, setIsResumeUploaded] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [resumeScore, setResumeScore] = useState(0);
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [resumes, setResumes] = useState([]);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const { success, error: toastError, info, warning } = useToast();
   
   const [formData, setFormData] = useState({
     fullName: "", email: "", phone: "", linkedin: "", github: "",
     education: "", skills: "", projects: "", internships: "", achievements: "",
   });
+
+  const fetchHistory = async () => {
+    if (!token) return;
+    try {
+      setHistoryLoading(true);
+      const history = await getResumes(token);
+      setResumes(history || []);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -37,17 +53,11 @@ export function ResumeStudio() {
     const fetchData = async () => {
       try {
         setIsLoggedIn(true);
-        const [stats, history] = await Promise.all([
-          getStats(token),
-          getResumes(token)
+        const [stats] = await Promise.all([
+          getStats(token)
         ]);
         setResumeScore(stats.resume_score || 75);
-        if (history && history.length > 0 && history[0].content) {
-          try {
-            const savedContent = JSON.parse(history[0].content);
-            setFormData(prev => ({ ...prev, ...savedContent }));
-          } catch(e) { console.error(e); }
-        }
+        await fetchHistory();
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -97,10 +107,16 @@ export function ResumeStudio() {
   const handleDownloadPDF = async () => {
     if (!token) { navigate("/login"); return; }
     try {
-      await createResume(token, { title: formData.fullName || "My Resume", content: JSON.stringify(formData) });
+      const result = analysisResults || { score: resumeScore || 75 };
+      await createResume(token, { 
+        title: formData.fullName || "My Resume", 
+        content: JSON.stringify({ ...formData, analysis: result }),
+        analysis_score: result 
+      });
       const doc = createPDFDocument();
       doc.save(`${formData.fullName ? formData.fullName.replace(/\s+/g, '_') : 'mapout'}_resume.pdf`);
-      success('Your resume has successfully downloaded.');
+      success('Your resume has successfully downloaded and saved.');
+      fetchHistory();
     } catch (err) {
       toastError('Error creating resume. Please try again.');
     }
@@ -108,19 +124,64 @@ export function ResumeStudio() {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && token) {
       try {
         setLoading(true);
         const result = await analyzeResume(token, file);
+        
+        // Save to database
+        await createResume(token, {
+          title: file.name,
+          content: JSON.stringify({ analysis: result }),
+          analysis_score: result,
+          file_url: result.url
+        });
+
         setResumeScore(result.score);
+        setAnalysisResults(result);
         setIsResumeUploaded(true);
         setUploadedFile(file);
-        success(`Analysis complete! Score: ${result.score}`);
+        success(`Analysis complete! Successfully saved to your archive.`);
+        fetchHistory();
       } catch (err) {
         toastError("Failed to upload and analyze resume");
       } finally {
         setLoading(false);
       }
+    } else if (!token) {
+      navigate("/login");
+    }
+  };
+
+  const loadFromHistory = (resume) => {
+    try {
+      const data = JSON.parse(resume.content);
+      const analysis = resume.analysis_score || data.analysis;
+      
+      if (data.fullName !== undefined) {
+        // This is a form-based resume
+        setFormData({
+          fullName: data.fullName || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          linkedin: data.linkedin || "",
+          github: data.github || "",
+          education: data.education || "",
+          skills: data.skills || "",
+          projects: data.projects || "",
+          internships: data.internships || "",
+          achievements: data.achievements || "",
+        });
+      }
+
+      if (analysis) {
+        setResumeScore(analysis.score);
+        setAnalysisResults(analysis);
+        setIsResumeUploaded(true);
+        success(`Loaded analysis for ${resume.title}`);
+      }
+    } catch (err) {
+      toastError("Failed to load historical data");
     }
   };
 
@@ -131,14 +192,13 @@ export function ResumeStudio() {
   );
 
   return (
-    <div className="min-h-screen bg-background font-sans">
       <div className="max-w-[1440px] mx-auto px-6 py-12">
         <div className="mb-12 animate-in fade-in slide-in-from-left-4 duration-700">
           <h1 className="text-5xl font-black tracking-tight mb-3 font-header text-foreground">
             Resume <span className="text-primary">Studio.</span>
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            Aesthetic optimization and AI-driven ATS synchronization for the modern era.
+            Build, analyze, and optimize your resume with AI-powered insights.
           </p>
         </div>
 
@@ -147,7 +207,7 @@ export function ResumeStudio() {
           <div className="space-y-8">
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
               <h2 className="text-2xl font-black mb-8 tracking-tight flex items-center gap-3 text-foreground">
-                <PenTool className="text-primary" size={24} /> Builder Protocol
+                <PenTool className="text-primary" size={24} /> Resume Builder
               </h2>
               <div className="space-y-6">
                 {[
@@ -173,7 +233,9 @@ export function ResumeStudio() {
                 {[
                   { label: "Education Mastery", name: "education", placeholder: "B.Tech in Computer Science, XYZ University (2022-2026)" },
                   { label: "Skill Clusters", name: "skills", placeholder: "JavaScript, React, Node.js, Python, SQL" },
-                  { label: "Technical Projects", name: "projects", placeholder: "Describe your architectural outputs..." }
+                  { label: "Technical Projects", name: "projects", placeholder: "Describe your architectural outputs..." },
+                  { label: "Internships", name: "internships", placeholder: "Describe your internship experiences..." },
+                  { label: "Achievements", name: "achievements", placeholder: "Awards, certifications, hackathons..." }
                 ].map((area) => (
                   <div key={area.name}>
                     <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{area.label}</label>
@@ -207,74 +269,154 @@ export function ResumeStudio() {
           </div>
 
           {/* Analysis Column */}
-          <div className="space-y-8">
-             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 transition-colors group-hover:bg-primary/10"></div>
-                <h2 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-3 text-foreground">
-                   <Target className="text-primary" size={24} /> Intelligence Index
-                </h2>
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+             <h2 className="text-2xl font-black tracking-tight text-foreground">Analysis & Insights</h2>
 
-                <div className="grid grid-cols-2 gap-6 mb-10">
-                   <div className="p-8 bg-muted/30 rounded-[2rem] border border-transparent hover:border-border transition-all">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Resume Score</p>
-                      <p className="text-5xl font-black text-primary">{resumeScore || 75}<span className="text-lg text-muted-foreground">/100</span></p>
-                   </div>
-                   <div className="p-8 bg-muted/30 rounded-[2rem] border border-transparent hover:border-border transition-all">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">ATS Sync</p>
-                      <p className="text-5xl font-black text-primary">87<span className="text-lg text-muted-foreground">%</span></p>
-                   </div>
-                </div>
-
-                <div className="p-8 bg-primary text-white rounded-[2rem] shadow-2xl shadow-teal-500/10 mb-10 relative overflow-hidden">
-                   <div className="relative z-10">
-                      <h4 className="font-black text-lg mb-4 flex items-center gap-2">
-                         <Lightbulb size={20} className="text-teal-200" /> Cognitive Insight
-                      </h4>
-                      <p className="text-sm font-medium leading-relaxed italic opacity-90">
-                        {resumeScore >= 80 ? "Architectural integrity is high. System is ready for market deployment." : "Incomplete modules detected. Optimize skill clusters and project descriptions for higher conversion."}
-                      </p>
-                   </div>
-                   <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                </div>
-
-                <div className="space-y-4">
-                   <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Protocol Sync</h4>
-                   <label className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-border rounded-[2rem] hover:bg-muted/30 cursor-pointer transition-all group">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
-                         <Upload size={28} />
-                      </div>
-                      <div className="text-center">
-                         <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Upload Archive</p>
-                         <p className="text-xs text-muted-foreground font-medium">Verify existing files for optimization.</p>
-                      </div>
-                      <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-                   </label>
-                </div>
+             {/* Pro Tips */}
+             <div className="bg-blue-50 border border-blue-100 rounded-[2rem] p-8">
+                <h3 className="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">
+                   <Shield size={20} className="text-blue-600" /> Pro Tips for Better Resume
+                </h3>
+                <ul className="space-y-2">
+                   {[
+                     "Use action verbs (Developed, Implemented, Designed)",
+                     "Quantify achievements (increased by 40%, managed 5 projects)",
+                     "Keep it to 1-2 pages maximum",
+                     "Use industry keywords from job descriptions",
+                     "Maintain consistent formatting and font",
+                     "List most recent experience first",
+                     "Proofread for grammar and spelling"
+                   ].map((tip, i) => (
+                     <li key={i} className="flex items-start gap-2 text-sm font-medium text-blue-800/80">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+                        {tip}
+                     </li>
+                   ))}
+                </ul>
              </div>
 
-             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
-                <h3 className="text-xl font-black mb-8 tracking-tight flex items-center gap-3 text-foreground">
-                   <Trophy className="text-primary" size={20} /> Pro Strategies
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                   {[
-                     "Deploy high-impact action verbs (Architected, Engineered).",
-                     "Quantify architectural outputs (Reduced latency by 40%).",
-                     "Synchronize skill clusters with industry demand nodes.",
-                     "Maintain a single-page minimalist blueprint structure."
-                   ].map((tip, i) => (
-                     <div key={i} className="flex items-start gap-4 p-5 bg-muted/20 rounded-2xl border border-transparent hover:border-border transition-all">
-                        <div className="mt-1 w-2 h-2 rounded-full bg-primary" />
-                        <span className="text-sm font-medium text-foreground">{tip}</span>
+             {/* Upload Section */}
+             <div className="bg-card border border-border rounded-[2rem] p-8 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                   <h3 className="font-black text-foreground">Upload Your Resume</h3>
+                   <button className="px-4 py-1.5 bg-primary/10 text-primary rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
+                      Get Analysis
+                   </button>
+                </div>
+                <p className="text-xs text-muted-foreground font-medium mb-6">Upload an existing PDF to get AI-powered scoring, tailored recommendations, and missing section feedback.</p>
+                
+                <label className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-border rounded-[2rem] hover:bg-muted/30 cursor-pointer transition-all group">
+                   <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
+                      <Upload size={28} />
+                   </div>
+                   <div className="text-center">
+                      <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Upload Archive</p>
+                      <p className="text-xs text-muted-foreground font-medium">Verify existing files for optimization.</p>
+                   </div>
+                   <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+                </label>
+             </div>
+
+             {/* Analysis Results */}
+             <div className="space-y-6">
+                <h3 className="text-xl font-black tracking-tight">Analysis Results</h3>
+                <div className="grid grid-cols-2 gap-6">
+                   <div className="p-8 bg-indigo-50 border border-indigo-100 rounded-[2rem] shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                         <FileText className="text-indigo-600" size={18} />
+                         <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Resume Score</span>
+                      </div>
+                      <p className="text-4xl font-black text-indigo-900 mb-2">{resumeScore || 82}<span className="text-lg text-indigo-400">/100</span></p>
+                      <p className="text-[10px] text-indigo-700/70 font-bold leading-tight">Excellent resume! Ready for applications.</p>
+                   </div>
+                   <div className="p-8 bg-purple-50 border border-purple-100 rounded-[2rem] shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                         <Zap className="text-purple-600" size={18} />
+                         <span className="text-[10px] font-black text-purple-900 uppercase tracking-widest">ATS Compatibility</span>
+                      </div>
+                      <p className="text-4xl font-black text-purple-900 mb-2">87<span className="text-lg text-purple-400">%</span></p>
+                      <p className="text-[10px] text-purple-700/70 font-bold leading-tight">Optimized for applicant tracking systems.</p>
+                   </div>
+                </div>
+
+                {/* Keywords Found */}
+                <div className="p-8 bg-teal-50 border border-teal-100 rounded-[2rem] shadow-sm">
+                   <h4 className="text-[10px] font-black text-teal-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Search size={14} /> Keywords Found
+                   </h4>
+                   <div className="flex flex-wrap gap-2">
+                      {["React", "JavaScript", "Node.js", "Git", "Agile"].map((tag) => (
+                        <span key={tag} className="px-4 py-1.5 bg-white border border-teal-200 rounded-full text-xs font-bold text-teal-800">{tag}</span>
+                      ))}
+                   </div>
+                </div>
+
+                {/* Missing Sections */}
+                <div className="p-8 bg-rose-50 border border-rose-100 rounded-[2rem] shadow-sm">
+                   <h4 className="text-[10px] font-black text-rose-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <AlertTriangle size={14} /> Missing Sections
+                   </h4>
+                   <ul className="space-y-1">
+                      {["• Certifications", "• Publications"].map((item) => (
+                        <li key={item} className="text-xs font-bold text-rose-800">{item}</li>
+                      ))}
+                   </ul>
+                </div>
+
+                {/* Analysis History */}
+                <div className="p-8 bg-card border border-border rounded-[2rem] shadow-sm">
+                   <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-6 flex items-center gap-2">
+                      <Archive size={14} /> Analysis History
+                   </h4>
+                   
+                   {historyLoading ? (
+                     <div className="flex items-center justify-center py-8">
+                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                      </div>
-                   ))}
+                   ) : resumes.length > 0 ? (
+                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {resumes.map((resume) => {
+                          const score = resume.analysis_score?.score || 75;
+                          const date = new Date(resume.created_at).toLocaleDateString();
+                          return (
+                            <button
+                              key={resume.id}
+                              onClick={() => loadFromHistory(resume)}
+                              className="w-full text-left p-4 bg-muted/30 border border-transparent hover:border-primary/30 hover:bg-white rounded-2xl transition-all group"
+                            >
+                              <div className="flex justify-between items-start mb-1">
+                                 <h5 className="text-xs font-black truncate max-w-[150px]">{resume.title}</h5>
+                                 <span className={`text-[10px] font-black ${score > 80 ? 'text-teal-600' : 'text-primary'}`}>{score}%</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground font-medium">{date}</p>
+                            </button>
+                          );
+                        })}
+                     </div>
+                   ) : (
+                     <div className="text-center py-8">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">No history yet</p>
+                        <p className="text-[10px] text-muted-foreground/60 font-medium mt-1">Uploaded resumes will appear here.</p>
+                     </div>
+                   )}
+                </div>
+
+                {/* Improvement Suggestions */}
+                <div className="space-y-4">
+                   <h4 className="text-lg font-black tracking-tight flex items-center gap-2">
+                      <TrendingUp className="text-primary" size={20} /> Improvement Suggestions
+                   </h4>
+                   <div className="p-6 bg-card border border-border rounded-2xl shadow-sm">
+                      <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                         Maintain persistent optimization by integrating high-impact technical keywords and quantifying achievements for better conversion.
+                      </p>
+                   </div>
                 </div>
              </div>
           </div>
         </div>
-      </div>
 
-      {/* Preview Modal */}
+        {/* Preview Modal */}
       {pdfPreviewUrl && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
