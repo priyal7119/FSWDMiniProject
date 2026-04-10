@@ -74,18 +74,20 @@ export const api = {
       if (!user) throw new Error("Not authenticated");
 
       // Fetch all relevant data for charts
-      const [skills, milestones, resumes, profile] = await Promise.all([
+      const [skills, milestones, resumes, profile, projects] = await Promise.all([
         supabase.from('skills').select('*').eq('user_id', user.id),
         supabase.from('milestones').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
         supabase.from('resumes').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-        supabase.from('profiles').select('*').eq('id', user.id).single()
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('projects').select('*') // Global projects for now
       ]);
 
       return {
         skills: skills.data || [],
         milestones: milestones.data || [],
         resumes: resumes.data || [],
-        profile: profile.data || {}
+        profile: profile.data || {},
+        projects: projects.data || []
       };
     },
   },
@@ -201,7 +203,7 @@ export const api = {
       return {
         name: data?.full_name || user.user_metadata?.full_name || "User",
         email: data?.email || user.email,
-        phone: data?.phone || "+1 (555) 000-0000",
+        phone: data?.phone || user.user_metadata?.phone || "+1 (555) 000-0000",
         location: data?.location || "Not Set",
         headline: data?.qualification || "Career Professional",
         resumeScore: data?.resume_score || 75,
@@ -415,6 +417,21 @@ export const api = {
   },
   search: { 
     query: async (searchTerm) => {
+      const term = searchTerm.toLowerCase();
+      
+      // Static Pages/Modules that can be searched
+      const pages = [
+        { title: 'Dashboard', type: 'page', path: '/dashboard' },
+        { title: 'Resume Studio', type: 'page', path: '/resume-studio' },
+        { title: 'Career Planner', type: 'page', path: '/career-planner' },
+        { title: 'Interview FAQs', type: 'page', path: '/interview-faqs' },
+        { title: 'Research Guide', type: 'page', path: '/research-guide' },
+        { title: 'Projects', type: 'page', path: '/projects' },
+        { title: 'Bookmarks', type: 'page', path: '/bookmarks' },
+        { title: 'Profile', type: 'page', path: '/profile' },
+        { title: 'About Us', type: 'page', path: '/about' }
+      ].filter(p => p.title.toLowerCase().includes(term));
+
       const [projectsResult, interviewResult] = await Promise.all([
         supabase.from('projects').select('id, title, domain, description').ilike('title', `%${searchTerm}%`),
         supabase.from('interview_questions').select('id, question, role').ilike('question', `%${searchTerm}%`)
@@ -436,7 +453,8 @@ export const api = {
         domain: q.role
       }));
 
-      return [...projects, ...faqs];
+      // Return unique results, prioritizing pages
+      return [...pages, ...projects, ...faqs];
     } 
   },
   planner: {
@@ -497,6 +515,7 @@ export const getProjects           = api.projects.getRecommended;
 export const getFAQs               = api.interview.getQuestions;
 export const getResearchGuides     = api.research.getGuide;
 export const searchContent         = api.search.query;
+export const incrementPrepCount    = api.interview.incrementPrepCount;
 
 
 

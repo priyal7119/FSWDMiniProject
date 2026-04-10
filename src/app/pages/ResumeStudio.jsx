@@ -213,7 +213,7 @@ export function ResumeStudio() {
                 {[
                   { label: "Full Name", name: "fullName", placeholder: "John Doe" },
                   { label: "Email Address", name: "email", placeholder: "john@example.com" },
-                  { label: "Phone Uplink", name: "phone", placeholder: "+1 234 567 8900" },
+                  { label: "Phone Number", name: "phone", placeholder: "+1 234 567 8900" },
                   { label: "LinkedIn URL", name: "linkedin", placeholder: "linkedin.com/in/johndoe" },
                   { label: "GitHub URL", name: "github", placeholder: "github.com/johndoe" }
                 ].map((field) => (
@@ -255,13 +255,13 @@ export function ResumeStudio() {
                     onClick={() => setPdfPreviewUrl(createPDFDocument().output('datauristring'))}
                     className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[12px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
                   >
-                    Preview Blueprint
+                    Preview Resume
                   </button>
                   <button
                     onClick={handleDownloadPDF}
                     className="flex-1 py-4 bg-muted border border-border text-foreground rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
                   >
-                    <Download size={16} /> Archive PDF
+                    <Download size={16} /> Download PDF
                   </button>
                 </div>
               </div>
@@ -421,7 +421,7 @@ export function ResumeStudio() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
             <div className="flex items-center justify-between px-10 py-6 border-b border-border bg-muted/30">
-              <h3 className="text-xl font-black tracking-tight text-foreground">Blueprint Preview</h3>
+              <h3 className="text-xl font-black tracking-tight text-foreground">Resume Preview</h3>
               <div className="flex items-center gap-4">
                 <button onClick={handleDownloadPDF} className="px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest">Download Archive</button>
                 <button onClick={() => setPdfPreviewUrl(null)} className="p-3 bg-muted rounded-full hover:bg-white transition-colors text-foreground"><X size={24} /></button>

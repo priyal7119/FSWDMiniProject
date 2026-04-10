@@ -65,7 +65,7 @@ export function Home() {
             <h1 className="mb-6 text-6xl md:text-8xl font-black tracking-tight leading-[0.9] font-header text-foreground">
               Map Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--mapout-primary)] to-[var(--mapout-secondary)]">Career</span> Journey
             </h1>
-            <p className="text-xl mb-10 text-muted-foreground font-medium leading-relaxed max-w-lg">
+            <p className="text-xl mb-10 text-white/90 font-medium leading-relaxed max-w-lg">
               Build a better resume, find the right skills, and prepare for interviews with our easy-to-use tools.
             </p>
             <div className="flex flex-wrap gap-5">
@@ -147,7 +147,7 @@ export function Home() {
                 id: 'bookmarks', 
                 route: '/bookmarks', 
                 icon: BookOpen, 
-                title: 'Saved Items', 
+                title: 'Bookmarks', 
                 desc: 'Keep track of all the resources you want to save for later.',
                 color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
                 private: true
@@ -197,22 +197,7 @@ export function Home() {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-[120px] -mr-48" />
       </section>
 
-      {/* Stats / Proof Section */}
-      <section className="py-24 bg-card border-y border-border">
-         <div className="max-w-[1440px] mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-            {[
-              { label: "Active Vectors", val: "12,400+" },
-              { label: "AI Blueprints", val: "850+" },
-              { label: "Industry Sync", val: "99.4%" },
-              { label: "Success Rate", val: "10x" }
-            ].map((stat, i) => (
-               <div key={i}>
-                  <p className="text-4xl font-black text-foreground mb-2">{stat.val}</p>
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stat.label}</p>
-               </div>
-            ))}
-         </div>
-      </section>
+      {/* Stats Section Removed */}
 
     </div>
   );
