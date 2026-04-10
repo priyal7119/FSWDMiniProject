@@ -349,6 +349,7 @@ export function CareerPlanner() {
                     <h3 className="text-3xl font-black tracking-tight mb-2">Live Action Matrix</h3>
                     <p className="text-muted-foreground font-medium">Real-time synchronization of your professional growth vectors.</p>
                  </div>
+
                  <div className="flex flex-wrap items-center gap-6">
                     <button 
                       onClick={handleDownloadRoadmap}
@@ -364,6 +365,7 @@ export function CareerPlanner() {
                        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                           <Award size={32} />
                        </div>
+
                     </div>
                  </div>
               </div>
