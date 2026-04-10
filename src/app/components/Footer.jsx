@@ -6,11 +6,11 @@ export function Footer() {
   const { info } = useToast();
 
   return (
-    <footer className="bg-muted/30 border-t border-border mt-auto pt-16 pb-8">
+    <footer className="bg-muted/50 backdrop-blur-md border-t border-border mt-auto pt-16 pb-8">
       <div className="max-w-[1440px] mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-6 gap-12 mb-16">
 
-          {/* Institutional Brand */}
+          {/* Brand Info */}
           <div className="md:col-span-2 space-y-8">
             <Link to="/" className="flex items-center gap-3">
                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-xl shadow-teal-500/10">
@@ -40,7 +40,7 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Ecosystem Matrix */}
+          {/* Explore Links */}
           <div className="col-span-1">
             <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] mb-6">Explore</h4>
             <ul className="space-y-4">
@@ -59,7 +59,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Intelligence Matrix */}
+          {/* Resource Links */}
           <div className="col-span-1">
             <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] mb-6">Resources</h4>
             <ul className="space-y-4">
@@ -78,7 +78,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Secure Contact */}
+          {/* Contact Support */}
           <div className="md:col-span-2">
             <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] mb-6">Contact Us</h4>
             <div className="p-6 bg-muted/30 border border-border rounded-[2rem] space-y-6">
@@ -92,8 +92,8 @@ export function Footer() {
                 <div className="flex items-center gap-4">
                    <div className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-teal-500"><ShieldCheck size={18} /></div>
                    <div>
-                      <p className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none mb-1">Auth Protocol</p>
-                      <p className="text-xs font-bold text-muted-foreground">Secure SSL Encrypted</p>
+                      <p className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none mb-1">Security</p>
+                      <p className="text-xs font-bold text-muted-foreground">SSL Encrypted</p>
                    </div>
                 </div>
             </div>

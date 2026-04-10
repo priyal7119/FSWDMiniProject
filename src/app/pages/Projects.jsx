@@ -3,14 +3,15 @@ import { useNavigate } from "react-router";
 import { 
   Briefcase, Search as SearchIcon, ExternalLink, 
   Code, Database, Layout, Smartphone, PieChart, 
-  Tag, Filter, ChevronRight, Zap, Trophy, ArrowRight
+  Tag, Filter, ChevronRight, Zap, Trophy, ArrowRight,
+  Bookmark, Archive
 } from "lucide-react";
-import { getProjects } from "../utils/api.js";
+import { getProjects, addBookmark } from "../utils/api.js";
 import { t } from "../utils/translate.js";
 import { useToast } from "../components/Toast.jsx";
 
 const categories = [
-  { id: "all", label: "All Archives", icon: Briefcase },
+  { id: "all", label: "All Projects", icon: Briefcase },
   { id: "frontend", label: "Frontend", icon: Layout },
   { id: "backend", label: "Backend", icon: Database },
   { id: "fullstack", label: "Full Stack", icon: Code },
@@ -26,11 +27,30 @@ export function Projects() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
-  const { error: toastError } = useToast();
+  const { success, error: toastError, info } = useToast();
 
   useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     fetchProjects();
-  }, []);
+  }, [token, navigate]);
+
+  const handleSave = async (project) => {
+    try {
+       await addBookmark({
+          title: project.title,
+          description: project.description,
+          type: 'project',
+          resource_id: project.id,
+          saved_date: new Date().toLocaleDateString()
+       });
+       success("Project saved to your Archive Vault.");
+    } catch (err) {
+       toastError("Failed to synchronize archive.");
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -72,10 +92,10 @@ export function Projects() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
           <div className="animate-in fade-in slide-in-from-left-4 duration-700">
             <h1 className="text-5xl font-black tracking-tight mb-3 font-header text-foreground">
-              Project <span className="text-primary">Blueprints.</span>
+              Browse <span className="text-primary">Projects</span>
             </h1>
             <p className="text-muted-foreground font-medium text-lg max-w-xl">
-              Curated technical blueprints matched to your professional vector and domain evolution.
+              Curated projects matched to your career path and skills.
             </p>
           </div>
           
@@ -83,7 +103,7 @@ export function Projects() {
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={20} />
             <input
               type="text"
-              placeholder="Search blueprints..."
+              placeholder="Search projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-6 py-4 bg-card border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-foreground"
@@ -146,19 +166,31 @@ export function Projects() {
                       ))}
                    </div>
 
-                   <div className="pt-6 border-t border-border flex items-center justify-between">
-                      <a 
-                        href={project.link || "#"} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest hover:underline"
-                      >
-                        Execute Protocol <ExternalLink size={14} />
-                      </a>
-                      <div className="flex items-center gap-1 text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">
-                         <Trophy size={14} /> Elite
-                      </div>
-                   </div>
+                    <div className="pt-6 border-t border-border flex items-center justify-between">
+                       <div className="flex items-center gap-6">
+                          <button 
+                            onClick={() => {
+                              if (project.link && project.link !== "#") {
+                                window.open(project.link, "_blank", "noopener,noreferrer");
+                              } else {
+                                toastError("Source repository or live link not available for this legacy archive.");
+                              }
+                            }}
+                            className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest hover:underline"
+                          >
+                            View Project <ExternalLink size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleSave(project)}
+                            className="flex items-center gap-2 text-muted-foreground font-black text-[10px] uppercase tracking-widest hover:text-primary transition-colors"
+                          >
+                             <Archive size={14} /> Archive
+                          </button>
+                       </div>
+                       <div className="flex items-center gap-1 text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">
+                          <Trophy size={14} /> Elite
+                       </div>
+                    </div>
                 </div>
               </div>
             ))
@@ -167,9 +199,9 @@ export function Projects() {
                <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center text-muted-foreground mx-auto mb-8">
                   <Filter size={40} />
                </div>
-               <h3 className="text-2xl font-black mb-2 tracking-tight text-foreground">Archives Locked</h3>
-               <p className="text-muted-foreground font-medium">No blueprints match your current search vector.</p>
-               <button onClick={() => { setActiveCategory("all"); setSearchQuery(""); }} className="mt-8 text-primary font-black text-[10px] uppercase tracking-[0.2em] underline decoration-2 underline-offset-8">Reset Protocol</button>
+               <h3 className="text-2xl font-black mb-2 tracking-tight text-foreground">No Projects Found</h3>
+               <p className="text-muted-foreground font-medium">No projects match your current search.</p>
+               <button onClick={() => { setActiveCategory("all"); setSearchQuery(""); }} className="mt-8 text-primary font-black text-[10px] uppercase tracking-[0.2em] underline decoration-2 underline-offset-8">Reset Search</button>
             </div>
           )}
         </div>
@@ -178,16 +210,16 @@ export function Projects() {
         <div className="mt-24 bg-primary rounded-[3rem] p-12 md:p-16 text-white shadow-2xl shadow-teal-500/10 flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden group">
            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
            <div className="max-w-2xl relative z-10">
-              <h2 className="text-4xl font-black mb-6 tracking-tight">Need a Custom Blueprint?</h2>
+              <h2 className="text-4xl font-black mb-6 tracking-tight">Need a Custom Project?</h2>
               <p className="text-teal-50 text-xl font-medium leading-relaxed opacity-90 italic">
-                "Our neural engine can architect personalized project paths synchronized with your skill evolution goals."
+                "Our AI platform can create personalized project paths based on your career goals."
               </p>
            </div>
            <button 
              onClick={() => navigate("/career-planner")}
              className="px-12 py-5 bg-white text-primary rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl whitespace-nowrap group/btn"
            >
-             Initialize Planner <ArrowRight className="inline-block ml-3 group-hover/btn:translate-x-2 transition-transform" />
+             Go to Planner <ArrowRight className="inline-block ml-3 group-hover/btn:translate-x-2 transition-transform" />
            </button>
         </div>
       </div>

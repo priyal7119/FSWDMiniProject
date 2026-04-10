@@ -238,7 +238,23 @@ export function Bookmarks() {
 
                         <div className="flex items-center gap-4">
                            <button onClick={() => handleOpen(item)} className="p-3 text-primary hover:bg-primary/10 rounded-xl transition-all"><ExternalLink size={20} /></button>
-                           <button className="p-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-xl transition-all"><Trash2 size={20} /></button>
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                 <button className="p-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-xl transition-all">
+                                    <Trash2 size={20} />
+                                 </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-card border-border rounded-[2rem]">
+                                 <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-black">Discard Archive?</AlertDialogTitle>
+                                    <AlertDialogDescription className="font-medium text-muted-foreground">This resource will be removed from your secure library synchronization.</AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRemove(item.id)} className="bg-rose-500 hover:bg-rose-600 rounded-xl font-black uppercase text-[10px] tracking-widest">Confirm Removal</AlertDialogAction>
+                                 </AlertDialogFooter>
+                              </AlertDialogContent>
+                           </AlertDialog>
                         </div>
                      </div>
                   ))}

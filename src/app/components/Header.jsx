@@ -82,19 +82,20 @@ export function Header() {
     { name: "Dashboard", path: "/dashboard" },
     { name: "Resume Studio", path: "/resume-studio" },
     { name: "Career Planner", path: "/career-planner" },
-    { name: "Interview FAQs", path: "/interview-faqs" },
+    { name: "Projects", path: "/projects" },
+    { name: "Interview Prep", path: "/interview-faqs" },
     { name: "Research Guide", path: "/research-guide" }
   ];
 
   return (
     <>
       <header
-        className={`sticky top-0 z-[100] w-full h-20 transition-all duration-500 flex items-center bg-background border-b border-border shadow-sm`}
+        className={`sticky top-0 z-[100] w-full h-20 transition-all duration-500 flex items-center bg-muted/50 backdrop-blur-md border-b border-border shadow-sm`}
       >
-        <div className="max-w-[1440px] w-full mx-auto px-6 flex items-center justify-between">
+        <div className="w-full px-6 lg:px-12 flex items-center justify-between">
           
-          {/* Left: Menu & Brand */}
-          <div className="flex items-center gap-6 flex-1 justify-start">
+          {/* Left: Menu & Brand (Restored to Left) */}
+          <div className="flex items-center gap-6">
             <button onClick={() => setIsSidebarOpen(true)} className="flex flex-col gap-1.5 p-2 hover:opacity-70 transition-opacity group">
               <span className="w-6 h-0.5 bg-foreground rounded-full transition-all group-hover:w-4"></span>
               <span className="w-6 h-0.5 bg-foreground rounded-full"></span>
@@ -109,7 +110,7 @@ export function Header() {
           </div>
 
           {/* Center: Nav Links */}
-          <div className="hidden md:flex items-center justify-center">
+          <div className="hidden lg:flex items-center justify-center">
             <nav className="flex items-center gap-1 p-1 bg-muted/60 rounded-2xl border border-border/80 shadow-inner">
                {navLinks.map((link) => {
                  const active = location.pathname === link.path;
@@ -131,8 +132,7 @@ export function Header() {
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-4 flex-1 justify-end">
-             
+          <div className="flex items-center gap-4">
              {/* Notifications */}
              <div 
                className="relative group/notif" 
@@ -141,7 +141,7 @@ export function Header() {
                onMouseLeave={() => setIsNotificationsOpen(false)}
              >
                 <button 
-                  className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all relative opacity-40 hover:opacity-100 group-hover/notif:opacity-100"
+                  className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all relative"
                 >
                    <Bell size={18} />
                    {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full animate-pulse shadow-xl shadow-teal-500/50" />}
@@ -161,7 +161,7 @@ export function Header() {
                                   <p className="text-xs font-semibold text-foreground mb-2 leading-relaxed">{notif.message}</p>
                                   <div className="flex justify-between items-center">
                                       <span className="text-[8px] font-black text-muted-foreground uppercase">{new Date(notif.created_at).toLocaleDateString()}</span>
-                                      {!notif.is_read && <button onClick={() => handleMarkRead(notif.id)} className="text-[8px] font-black text-primary hover:underline uppercase tracking-tighter">Secure</button>}
+                                      {!notif.is_read && <button onClick={() => handleMarkRead(notif.id)} className="text-[8px] font-black text-primary hover:underline uppercase tracking-tighter">Mark as Read</button>}
                                   </div>
                                 </div>
                             ))
@@ -174,43 +174,37 @@ export function Header() {
                 )}
              </div>
 
-
-             {/* Saved Items */}
-             <Link to="/bookmarks" className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
-                <Archive size={18} />
+             {/* Profile Icon */}
+             <Link to="/profile" className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
+                <User size={18} />
              </Link>
 
-             <div className="h-6 w-px bg-border mx-2" />
-
-             {/* Profile/Auth Actions */}
-             {isLoggedIn ? (
-               <div className="flex items-center gap-3 pl-2">
-                  <div className="text-right hidden sm:block">
-                     <p className="text-[10px] font-black text-foreground uppercase tracking-widest">{userName}</p>
-                     <button onClick={handleLogout} className="text-[8px] font-black text-rose-500 uppercase tracking-widest hover:underline">Log Out</button>
-                  </div>
-                  <Link to="/profile" className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center font-black text-xs shadow-xl shadow-teal-500/20 hover:scale-105 transition-transform">
-                     {userName.charAt(0).toUpperCase()}
-                  </Link>
-               </div>
-             ) : (
-               <Link to="/login" className="px-6 py-2.5 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-teal-500/20 hover:scale-105 active:scale-95 transition-all">
-                  Sign In
-               </Link>
-             )}
-
+             {/* Auth Button */}
+             <button 
+                onClick={isLoggedIn ? handleLogout : () => navigate("/login")}
+                className="px-6 py-2.5 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-teal-500/20 hover:scale-105 active:scale-95 transition-all"
+             >
+                {isLoggedIn ? "Log Out" : "Sign In"}
+             </button>
           </div>
         </div>
       </header>
 
-      {/* Sidebar Architecture */}
+      {/* Sidebar Navigation */}
       {isSidebarOpen && (
         <>
           <div className="fixed inset-0 z-[120] bg-background/80 backdrop-blur-md animate-in fade-in duration-500" onClick={() => setIsSidebarOpen(false)} />
           <aside className="fixed top-0 left-0 bottom-0 z-[130] w-80 bg-card border-r border-border shadow-2xl p-8 flex flex-col animate-in slide-in-from-left-full duration-500">
-             <div className="flex justify-between items-center mb-12">
-                <span className="text-xl font-black tracking-tight">Menu</span>
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-3xl font-black tracking-tight font-header text-foreground">
+                  Explore <span className="text-primary">Features.</span>
+                </h3>
                 <button onClick={() => setIsSidebarOpen(false)} className="p-2 rounded-lg hover:bg-muted"><X size={20} /></button>
+             </div>
+             
+             <div className="mb-10 animate-in fade-in slide-in-from-top-2 duration-500">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Welcome back,</p>
+                <h4 className="text-2xl font-black text-foreground">Hello, {userName}!</h4>
              </div>
              
              <nav className="flex-1 space-y-2">
@@ -229,7 +223,7 @@ export function Header() {
              </nav>
 
              <div className="pt-8 border-t border-border mt-auto">
-                <Link to="/about" onClick={() => setIsSidebarOpen(false)} className="block p-4 text-[8px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">About Us</Link>
+                <Link to="/about" onClick={() => setIsSidebarOpen(false)} className="block p-4 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">About Us</Link>
                 {isLoggedIn && <button onClick={handleLogout} className="w-full mt-4 p-4 bg-rose-500/10 text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Log Out</button>}
              </div>
           </aside>

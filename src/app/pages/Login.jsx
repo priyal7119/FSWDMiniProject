@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { User, Lock, Mail, ShieldCheck, ChevronRight, ArrowLeft } from "lucide-react";
+import { User, Lock, Mail, ShieldCheck, ChevronRight, ArrowLeft, Phone } from "lucide-react";
 import { supabase } from "../utils/supabaseClient.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -13,6 +13,7 @@ export function Login() {
     name: "",
     email: "",
     password: "",
+    phone: "",
   });
 
   const handleChange = (e) => {
@@ -51,7 +52,7 @@ export function Login() {
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name } }
+          options: { data: { full_name: name, phone: formData.phone } }
         });
 
         if (signupError) {
@@ -93,26 +94,54 @@ export function Login() {
     <div className="min-h-screen bg-background flex">
       
       {/* Visual Identity Side */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden items-center justify-center p-24">
-         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-         <div className="absolute -bottom-32 -right-32 w-[40rem] h-[40rem] bg-teal-400/10 rounded-full blur-[120px]" />
-         <div className="absolute top-0 left-0 p-12">
-            <h2 onClick={() => navigate('/')} className="text-white text-2xl font-black tracking-tight cursor-pointer">MapOut.</h2>
+      <div className="hidden lg:flex lg:w-1/2 bg-[#0a0f1c] relative overflow-hidden items-center justify-center p-24">
+         {/* Premium Background Layers */}
+         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[var(--mapout-primary)] to-[#0f172a] opacity-90" />
+         
+         {/* Animated Glass Orbs */}
+         <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-teal-500/20 rounded-full blur-[120px] animate-pulse" />
+         <div className="absolute bottom-[-10%] right-[-10%] w-[35rem] h-[35rem] bg-indigo-500/10 rounded-full blur-[120px]" />
+         
+         {/* Abstract Mesh Pattern */}
+         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }}></div>
+
+         <div className="absolute top-0 left-0 p-12 w-full flex justify-between items-center bg-gradient-to-b from-black/20 to-transparent">
+            <h2 onClick={() => navigate('/')} className="text-white text-2xl font-black tracking-tight cursor-pointer flex items-center gap-3">
+               <div className="w-10 h-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl flex items-center justify-center">
+                  <ShieldCheck size={20} className="text-teal-400" />
+               </div>
+               MapOut.
+            </h2>
          </div>
          
-         <div className="relative z-10 text-white max-w-lg">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-10 border border-white/20">
-               <ShieldCheck size={32} />
+         <div className="relative z-10 max-w-lg p-12 bg-white/5 backdrop-blur-2xl rounded-[3rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]">
+            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-primary rounded-2xl flex items-center justify-center mb-10 shadow-2xl shadow-teal-500/20 transform -rotate-6">
+               <ShieldCheck size={32} className="text-white" />
             </div>
-            <h1 className="text-5xl font-black mb-8 tracking-tight leading-tight">Welcome to MapOut.</h1>
-            <p className="text-teal-50/70 text-lg font-medium leading-relaxed">
-               Log in to access your dashboard, build your resume, and plan your career path with our easy-to-use tools.
+            <h1 className="text-5xl md:text-6xl font-black mb-8 tracking-tighter leading-[0.9] text-white">
+               Scale Your <br />
+               <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-teal-100">Future.</span>
+            </h1>
+            <p className="text-teal-50/60 text-lg font-medium leading-relaxed italic border-l-2 border-teal-500/30 pl-6">
+               "The best way to predict the future is to architect it yourself with MapOut's advanced career engineering tools."
             </p>
+            
+            <div className="mt-12 flex items-center gap-6">
+               <div className="flex -space-x-3">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[8px] font-black text-white">U{i}</div>
+                  ))}
+               </div>
+               <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Joined by 10k+ Architects</p>
+            </div>
          </div>
 
-         <div className="absolute bottom-12 left-12 flex gap-12 text-teal-100/40 font-black text-[10px] uppercase tracking-[0.3em]">
-            <span>Security v4.2.0</span>
-            <span>Auth Protocol: Supabase</span>
+         <div className="absolute bottom-12 left-12 right-12 flex justify-between items-center text-teal-100/20 font-black text-[8px] uppercase tracking-[0.4em]">
+            <div className="flex gap-8">
+               <span>AES_256_ENCRYPTED</span>
+               <span>TLS_v1.3_ACTIVE</span>
+            </div>
+            <span>© 2026_MAPOUT_SYSTEMS</span>
          </div>
       </div>
 
@@ -136,9 +165,10 @@ export function Login() {
 
            <form onSubmit={handleSubmit} className="space-y-6">
               {isSignUp && (
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block ml-1">Full Name</label>
-                   <div className="relative group">
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block ml-1">Full Name</label>
+                    <div className="relative group">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" size={18} />
                       <input 
                         type="text" 
@@ -149,8 +179,24 @@ export function Login() {
                         placeholder="John Doe" 
                         required={isSignUp}
                       />
-                   </div>
-                </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block ml-1">Mobile ID</label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" size={18} />
+                      <input 
+                        type="tel" 
+                        name="phone" 
+                        value={formData.phone} 
+                        onChange={handleChange} 
+                        className="w-full pl-12 pr-6 py-4 bg-muted/30 border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none font-bold transition-all" 
+                        placeholder="+1 (555) 000-0000" 
+                        required={isSignUp}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">

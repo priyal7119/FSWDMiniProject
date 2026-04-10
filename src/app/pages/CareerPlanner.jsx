@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getRoadmap, setRoadmap, getMilestones, toggleMilestone, addMilestone, getSkills, getRoadmapPhases } from "../utils/api.js";
 import { useToast } from "../components/Toast.jsx";
+import { jsPDF } from "jspdf";
 
 export function CareerPlanner() {
   const navigate = useNavigate();
@@ -85,6 +86,41 @@ export function CareerPlanner() {
     } catch (err) {
       console.error("Error fetching role skills:", err);
       setRoleSkills(["Logic Architecture", "System Design"]);
+    }
+  };
+
+  const handleDownloadRoadmap = () => {
+    try {
+      info("Generating your personalized roadmap...");
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("MAPOUT CAREER ROADMAP", 20, 25);
+      
+      doc.setFontSize(14);
+      doc.text(`Target Role: ${selectedRole}`, 20, 40);
+      doc.text(`Path: ${selectedPath?.replace('_', ' ').toUpperCase() || 'General'}`, 20, 50);
+      
+      doc.setDrawColor(20, 184, 166);
+      doc.line(20, 55, 190, 55);
+      
+      let y = 70;
+      doc.setFontSize(12);
+      doc.text("CORE MILESTONES:", 20, y);
+      y += 10;
+      
+      doc.setFont("helvetica", "normal");
+      roadmapData.forEach((m, i) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        const status = m.status === 'completed' ? '[DONE]' : '[PENDING]';
+        doc.text(`${i + 1}. ${status} ${m.title} (${m.category})`, 25, y);
+        y += 8;
+      });
+      
+      doc.save(`mapout_roadmap_${selectedRole.toLowerCase().replace(' ', '_')}.pdf`);
+      success("Roadmap downloaded successfully!");
+    } catch (err) {
+      warning("Failed to generate PDF. Please try again.");
     }
   };
 
@@ -326,13 +362,21 @@ export function CareerPlanner() {
                     <h3 className="text-3xl font-black tracking-tight mb-2">Live Action Matrix</h3>
                     <p className="text-muted-foreground font-medium">Real-time synchronization of your professional growth vectors.</p>
                  </div>
-                 <div className="flex items-center gap-4">
-                    <div className="text-right">
-                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Overall Alignment</p>
-                       <p className="text-2xl font-black text-primary">32.4%</p>
-                    </div>
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                       <Award size={32} />
+                 <div className="flex flex-wrap items-center gap-6">
+                    <button 
+                      onClick={handleDownloadRoadmap}
+                      className="px-6 py-3 bg-white border border-border text-foreground hover:bg-muted rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm"
+                    >
+                       <Download size={16} className="text-primary" /> Download Roadmap
+                    </button>
+                    <div className="flex items-center gap-4">
+                       <div className="text-right">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Overall Alignment</p>
+                          <p className="text-2xl font-black text-primary">32.4%</p>
+                       </div>
+                       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                          <Award size={32} />
+                       </div>
                     </div>
                  </div>
               </div>

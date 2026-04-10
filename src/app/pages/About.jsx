@@ -61,7 +61,11 @@ export default function About() {
                     Whether you are just starting or looking for your next big role, MapOut has the tools you need to succeed.
                  </p>
                  <button 
-                   onClick={() => navigate('/login')}
+                   onClick={() => {
+                        const token = localStorage.getItem('token');
+                        if (token) navigate('/dashboard');
+                        else navigate('/login');
+                   }}
                    className="px-12 py-5 bg-white text-primary rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-3 mx-auto"
                  >
                     Get Started <ArrowRight size={16} />

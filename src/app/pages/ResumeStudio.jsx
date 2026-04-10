@@ -138,7 +138,7 @@ export function ResumeStudio() {
             Resume <span className="text-primary">Studio.</span>
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            Aesthetic optimization and AI-driven ATS synchronization for the modern era.
+            Build a professional, ATS-friendly resume to land your dream job.
           </p>
         </div>
 
@@ -147,13 +147,13 @@ export function ResumeStudio() {
           <div className="space-y-8">
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
               <h2 className="text-2xl font-black mb-8 tracking-tight flex items-center gap-3 text-foreground">
-                <PenTool className="text-primary" size={24} /> Builder Protocol
+                <PenTool className="text-primary" size={24} /> Resume Details
               </h2>
               <div className="space-y-6">
                 {[
                   { label: "Full Name", name: "fullName", placeholder: "John Doe" },
                   { label: "Email Address", name: "email", placeholder: "john@example.com" },
-                  { label: "Phone Uplink", name: "phone", placeholder: "+1 234 567 8900" },
+                  { label: "Phone Number", name: "phone", placeholder: "+1 234 567 8900" },
                   { label: "LinkedIn URL", name: "linkedin", placeholder: "linkedin.com/in/johndoe" },
                   { label: "GitHub URL", name: "github", placeholder: "github.com/johndoe" }
                 ].map((field) => (
@@ -171,9 +171,9 @@ export function ResumeStudio() {
                 ))}
                 
                 {[
-                  { label: "Education Mastery", name: "education", placeholder: "B.Tech in Computer Science, XYZ University (2022-2026)" },
-                  { label: "Skill Clusters", name: "skills", placeholder: "JavaScript, React, Node.js, Python, SQL" },
-                  { label: "Technical Projects", name: "projects", placeholder: "Describe your architectural outputs..." }
+                  { label: "Education", name: "education", placeholder: "List your degrees and schools..." },
+                  { label: "Skills", name: "skills", placeholder: "List your key skills..." },
+                  { label: "Projects", name: "projects", placeholder: "Describe your recent projects..." }
                 ].map((area) => (
                   <div key={area.name}>
                     <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{area.label}</label>
@@ -193,13 +193,13 @@ export function ResumeStudio() {
                     onClick={() => setPdfPreviewUrl(createPDFDocument().output('datauristring'))}
                     className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[12px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
                   >
-                    Preview Blueprint
+                    Preview Resume
                   </button>
                   <button
                     onClick={handleDownloadPDF}
                     className="flex-1 py-4 bg-muted border border-border text-foreground rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
                   >
-                    <Download size={16} /> Archive PDF
+                    <Download size={16} /> Download PDF
                   </button>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export function ResumeStudio() {
              <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 transition-colors group-hover:bg-primary/10"></div>
                 <h2 className="text-2xl font-black mb-10 tracking-tight flex items-center gap-3 text-foreground">
-                   <Target className="text-primary" size={24} /> Intelligence Index
+                   <Target className="text-primary" size={24} /> Analysis Summary
                 </h2>
 
                 <div className="grid grid-cols-2 gap-6 mb-10">
@@ -228,24 +228,24 @@ export function ResumeStudio() {
                 <div className="p-8 bg-primary text-white rounded-[2rem] shadow-2xl shadow-teal-500/10 mb-10 relative overflow-hidden">
                    <div className="relative z-10">
                       <h4 className="font-black text-lg mb-4 flex items-center gap-2">
-                         <Lightbulb size={20} className="text-teal-200" /> Cognitive Insight
+                         <Lightbulb size={20} className="text-teal-200" /> AI Suggestions
                       </h4>
                       <p className="text-sm font-medium leading-relaxed italic opacity-90">
-                        {resumeScore >= 80 ? "Architectural integrity is high. System is ready for market deployment." : "Incomplete modules detected. Optimize skill clusters and project descriptions for higher conversion."}
+                        {resumeScore >= 80 ? "Your resume looks great! It's ready for applications." : "Some sections could be improved. Try adding more skills or project details to boost your score."}
                       </p>
                    </div>
                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                 </div>
 
                 <div className="space-y-4">
-                   <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Protocol Sync</h4>
+                   <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Upload Your Resume</h4>
                    <label className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-border rounded-[2rem] hover:bg-muted/30 cursor-pointer transition-all group">
                       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
                          <Upload size={28} />
                       </div>
                       <div className="text-center">
-                         <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Upload Archive</p>
-                         <p className="text-xs text-muted-foreground font-medium">Verify existing files for optimization.</p>
+                         <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Upload Resume</p>
+                         <p className="text-xs text-muted-foreground font-medium">Upload your current file for a quick score.</p>
                       </div>
                       <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
                    </label>
@@ -279,7 +279,7 @@ export function ResumeStudio() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
             <div className="flex items-center justify-between px-10 py-6 border-b border-border bg-muted/30">
-              <h3 className="text-xl font-black tracking-tight text-foreground">Blueprint Preview</h3>
+              <h3 className="text-xl font-black tracking-tight text-foreground">Resume Preview</h3>
               <div className="flex items-center gap-4">
                 <button onClick={handleDownloadPDF} className="px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest">Download Archive</button>
                 <button onClick={() => setPdfPreviewUrl(null)} className="p-3 bg-muted rounded-full hover:bg-white transition-colors text-foreground"><X size={24} /></button>

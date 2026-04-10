@@ -28,7 +28,7 @@ export function Profile() {
           skillsLearned: stats.skills_learned,
           projectsCompleted: stats.milestones_completed,
           interviewsPrepped: stats.interviews_prepped,
-          achievements: (stats.achievements && stats.achievements.length > 0) ? stats.achievements : ["Early Adopter", "Explorer"],
+          achievements: (stats.achievements && stats.achievements.length > 0) ? stats.achievements : [],
           joinDate: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "April 2026"
         });
       } catch (err) {
@@ -59,41 +59,16 @@ export function Profile() {
     navigate("/login");
   };
 
-  const handleShare = (platform) => {
-    info(`Opening share dialog for ${platform}...`);
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    success("Profile link copied to clipboard!");
   };
 
-  const handleExport = () => {
-    if (!userStats) return;
-    
-    let profileContent = `============== MAPOUT PROFILE ==============\n`;
-    profileContent += `Name: ${userStats.name}\n`;
-    profileContent += `Headline: ${userStats.headline}\n`;
-    profileContent += `Email: ${userStats.email}\n`;
-    profileContent += `Phone: ${userStats.phone}\n`;
-    profileContent += `============================================\n\n`;
-    profileContent += `STATISTICS\n`;
-    profileContent += `Resume Score: ${userStats.resumeScore}/100\n`;
-    profileContent += `Skills Learned: ${userStats.skillsLearned}\n`;
-    profileContent += `Projects Done: ${userStats.projectsCompleted}\n`;
-    profileContent += `Interviews Prepped: ${userStats.interviewsPrepped}\n\n`;
-    profileContent += `ACHIEVEMENTS\n`;
-    userStats.achievements.forEach(ach => {
-      profileContent += `- ${ach}\n`;
-    });
-
-    const blob = new Blob([profileContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${userStats.name.replace(/\s+/g, '_')}_Profile.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    success('Your profile data has been exported successfully.');
+  const handleResumeStudio = () => {
+    navigate("/resume-studio");
   };
+
+
 
   if (loading) {
     return (
@@ -133,28 +108,32 @@ export function Profile() {
                   {userStats.name}
                 </h1>
                 <p className="text-xl text-white/60 font-medium max-w-lg">{userStats.headline}</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-6">
-                   {['Open to Opportunities', 'Top 5% Performer', 'Verified Professional'].map((tag, i) => (
-                      <span key={i} className="px-4 py-1.5 bg-white/5 rounded-full text-[10px] font-black text-white/80 border border-white/5 uppercase tracking-widest">
-                        {tag}
-                      </span>
-                   ))}
+                <div className="flex items-center gap-2 mt-6">
+                   <span className="px-4 py-1.5 bg-teal-500/20 rounded-full text-[10px] font-black text-teal-300 border border-teal-500/20 uppercase tracking-widest flex items-center gap-2">
+                     <ShieldCheck size={12} /> Verified Professional
+                   </span>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-4">
               <button 
-                onClick={() => handleShare('LinkedIn')}
+                onClick={handleShare}
                 className="px-6 py-4 bg-white/5 hover:bg-white text-white hover:text-primary rounded-2xl font-bold transition-all border border-white/10 flex items-center gap-2 group"
               >
                 <Share2 size={18} className="group-hover:scale-110 transition-transform" /> Share Profile
               </button>
-              <button 
-                onClick={handleExport}
+               <button 
+                onClick={handleResumeStudio}
                 className="px-6 py-4 bg-[var(--mapout-secondary)] hover:bg-teal-400 text-white rounded-2xl font-bold transition-all shadow-lg shadow-teal-500/20 flex items-center gap-2 group"
               >
-                <Layout size={18} className="group-hover:scale-110 transition-transform" /> Export Data
+                <FileText size={18} className="group-hover:scale-110 transition-transform" /> Resume Studio
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="px-6 py-4 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-2xl font-bold transition-all border border-rose-500/20 flex items-center gap-2 group"
+              >
+                <LogOut size={18} className="group-hover:rotate-12 transition-transform" /> Log Out
               </button>
             </div>
           </div>
@@ -168,7 +147,7 @@ export function Profile() {
             {/* Quick Stats Card */}
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
                <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
-                 <Trophy size={20} className="text-[var(--mapout-secondary)]" /> Performance Hub
+                 <Trophy size={20} className="text-[var(--mapout-secondary)]" /> Stats Overview
                </h3>
                <div className="space-y-6">
                   {[
@@ -193,17 +172,23 @@ export function Profile() {
             {/* Achievements Card */}
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--mapout-secondary)]/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-               <h3 className="text-xl font-bold mb-8 relative z-10">Honor Board</h3>
-               <div className="flex flex-wrap gap-3 relative z-10">
-                 {userStats.achievements.map((ach, idx) => (
-                    <div key={idx} className="px-5 py-3 bg-muted/30 border border-border rounded-2xl flex items-center gap-3 shadow-sm hover:shadow-md hover:border-[var(--mapout-secondary)] transition-all group cursor-default">
-                       <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center text-[var(--mapout-secondary)] group-hover:scale-110 transition-transform">
-                          <Award size={16} />
+               <h3 className="text-xl font-bold mb-8 relative z-10">Achievements</h3>
+                <div className="relative z-10 flex flex-wrap gap-3">
+                  {userStats.achievements.length > 0 ? (
+                    userStats.achievements.map((ach, idx) => (
+                       <div key={idx} className="px-5 py-3 bg-muted/30 border border-border rounded-2xl flex items-center gap-3 shadow-sm hover:shadow-md hover:border-[var(--mapout-secondary)] transition-all group cursor-default">
+                          <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center text-[var(--mapout-secondary)] group-hover:scale-110 transition-transform">
+                             <Award size={16} />
+                          </div>
+                          <span className="font-bold text-sm text-foreground">{ach}</span>
                        </div>
-                       <span className="font-bold text-sm text-foreground">{ach}</span>
+                    ))
+                  ) : (
+                    <div className="w-full py-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl">
+                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">No achievements unlocked yet</p>
                     </div>
-                 ))}
-               </div>
+                  )}
+                </div>
             </div>
           </div>
 
@@ -212,11 +197,11 @@ export function Profile() {
             
             {/* Contact Information */}
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm relative group overflow-hidden">
-               <h3 className="text-xl font-bold mb-10">Personal Intelligence</h3>
+               <h3 className="text-xl font-bold mb-10">Contact Information</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   {[
-                    { label: "E-MAIL PROTOCOL", value: userStats.email, icon: Mail },
-                    { label: "MOBILE UPLINK", value: userStats.phone, icon: Phone },
+                    { label: "EMAIL ADDRESS", value: userStats.email, icon: Mail },
+                    { label: "PHONE NUMBER", value: userStats.phone, icon: Phone },
                     { label: "LOCATION", value: userStats.location, icon: MapPin },
                     { label: "ACTIVE SINCE", value: userStats.joinDate, icon: Calendar },
                   ].map((info, i) => (
@@ -235,7 +220,7 @@ export function Profile() {
 
             {/* Account Status Systems */}
             <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
-               <h3 className="text-xl font-bold mb-10">Ecosystem Connectivity</h3>
+               <h3 className="text-xl font-bold mb-10">Connections</h3>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                  {[
                    { label: 'GitHub Ecosystem', icon: Github, key: 'github', url: userStats.githubUrl },
@@ -249,7 +234,7 @@ export function Profile() {
                            <social.icon size={28} />
                         </div>
                         <h4 className="font-bold mb-1 text-sm">{social.label}</h4>
-                        <p className="text-[10px] font-black text-muted-foreground mb-6 tracking-widest uppercase">{isActive ? 'Uplink Active' : 'Offline'}</p>
+                        <p className="text-[10px] font-black text-muted-foreground mb-6 tracking-widest uppercase">{isActive ? 'Linked' : 'Not Linked'}</p>
                         <button 
                           onClick={() => handleToggleSetting(social.key, !isActive)}
                           className={`mt-auto w-full py-3 rounded-xl font-black text-[10px] tracking-widest uppercase transition-all ${isActive ? 'bg-muted text-foreground hover:bg-slate-200' : 'bg-primary text-white hover:bg-[var(--mapout-primary)]/90'}`}
@@ -262,36 +247,7 @@ export function Profile() {
                </div>
             </div>
 
-            {/* Security Profile */}
-            <div className="bg-muted border border-border border-dashed rounded-[2.5rem] p-12 text-center flex flex-col items-center">
-               <div className="w-20 h-20 bg-white border border-border rounded-[1.5rem] flex items-center justify-center mb-8 shadow-sm group hover:scale-110 transition-transform">
-                 <ShieldCheck className="text-[var(--mapout-secondary)]" size={36} />
-               </div>
-               <h3 className="text-3xl font-extrabold mb-4 tracking-tight">Security & Governance</h3>
-               <p className="text-muted-foreground font-medium max-w-md mb-10 leading-relaxed">
-                 Your data is protected by industry-standard encryption protocols. You have complete control over your professional data export and session termination.
-               </p>
-               <button 
-                 onClick={handleLogout}
-                 className="px-12 py-5 bg-red-600 text-white font-black text-[12px] tracking-[0.2em] rounded-2xl hover:bg-red-700 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-red-500/20 flex items-center gap-3"
-               >
-                 <LogOut size={18} /> TERMINATE SESSION
-               </button>
-            </div>
           </div>
-        </div>
-        
-        {/* Profile Footer Intelligence */}
-        <div className="mt-20 py-12 border-t border-border flex flex-col md:flex-row justify-between items-center gap-8">
-           <div className="flex items-center gap-4">
-             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white text-[12px] font-black shadow-lg">MO</div>
-             <p className="text-[10px] font-black text-muted-foreground tracking-[0.3em] uppercase">SYSTEM ID: {userStats.email.split('@')[0].toUpperCase()}-X91 • VERIFIED</p>
-           </div>
-           <div className="flex gap-10">
-              {['Privacy', 'Legal', 'Security'].map((link, i) => (
-                <button key={i} className="text-[10px] font-black text-muted-foreground hover:text-primary transition-colors tracking-[0.2em] uppercase">{link}</button>
-              ))}
-           </div>
         </div>
 
       </div>
