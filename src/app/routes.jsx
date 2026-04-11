@@ -21,7 +21,6 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "login", Component: Login },
       { path: "about", Component: About },
-      { path: "dashboard", Component: Dashboard },
       { path: "research-guide", Component: ResearchGuide },
       { path: "interview-faqs", Component: InterviewFAQs },
 
@@ -29,6 +28,7 @@ export const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          { path: "dashboard", Component: Dashboard },
           { path: "resume-studio", Component: ResumeStudio },
           { path: "career-planner", Component: CareerPlanner },
           { path: "projects", Component: Projects },

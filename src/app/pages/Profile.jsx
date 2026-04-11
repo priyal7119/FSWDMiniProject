@@ -54,10 +54,7 @@ export function Profile() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -129,12 +126,7 @@ export function Profile() {
               >
                 <FileText size={18} className="group-hover:scale-110 transition-transform" /> Resume Studio
               </button>
-              <button 
-                onClick={handleLogout}
-                className="px-6 py-4 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-2xl font-bold transition-all border border-rose-500/20 flex items-center gap-2 group"
-              >
-                <LogOut size={18} className="group-hover:rotate-12 transition-transform" /> Log Out
-              </button>
+
             </div>
           </div>
         </div>

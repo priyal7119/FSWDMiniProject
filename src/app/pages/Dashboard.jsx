@@ -215,7 +215,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="mt-8 p-6 bg-muted/30 rounded-2xl border border-transparent italic text-sm text-muted-foreground font-medium">
-              "Intelligence metrics show a 20-point increase in system alignment over 5 cycles."
+              "Your resume score has seen a steady improvement over the past 5 months. Keep it up!"
             </div>
           </div>
 
@@ -320,12 +320,12 @@ export function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-primary text-white rounded-[2.5rem] p-12 shadow-2xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-              <h3 className="text-2xl font-black mb-10 tracking-tight">Autonomous Strategy</h3>
+              <h3 className="text-2xl font-black mb-10 tracking-tight">Next Steps</h3>
               <div className="space-y-6">
                 {[
-                  { title: "Optimize Resume", path: "/resume-studio", desc: "Detected 4 missing technical keywords for target role." },
-                  { title: "Sync Skill Node", path: "/career-planner", desc: "Docker & K8s mastery recommended for evolution." },
-                  { title: "Execute Project", path: "/projects", desc: "New API Architecture blueprint aligned with current profile." }
+                  { title: "Update Resume", path: "/resume-studio", desc: "Add missing keywords to match your target job." },
+                  { title: "Learn New Skills", path: "/career-planner", desc: "Master Docker & Kubernetes to advance your career." },
+                  { title: "Start a New Project", path: "/projects", desc: "Build a new project to boost your portfolio." }
                 ].map((act, i) => (
                   <div key={i} onClick={() => navigate(act.path)} className="p-6 bg-white/10 rounded-2xl border border-white/5 hover:bg-white/20 transition-all cursor-pointer group/item">
                     <div className="flex justify-between items-center">
@@ -344,7 +344,7 @@ export function Dashboard() {
             <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-8 animate-bounce">
               <Trophy size={40} />
             </div>
-            <h3 className="text-3xl font-black mb-4 tracking-tight">System Honor</h3>
+            <h3 className="text-3xl font-black mb-4 tracking-tight">Your Achievements</h3>
             {stats?.achievements && stats.achievements.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-2 mb-10">
                 {stats.achievements.map((ach, i) => (
@@ -355,11 +355,11 @@ export function Dashboard() {
               </div>
             ) : (
               <p className="text-muted-foreground font-medium max-w-sm mb-10 leading-relaxed">
-                You are in the <span className="text-primary font-bold">top 5%</span> of active career architects this cycle. System performance is optimal.
+                Keep learning, building projects, and preparing for interviews to unlock new achievements!
               </p>
             )}
             <button onClick={() => navigate("/profile")} className="text-primary font-black text-[12px] uppercase tracking-widest underline decoration-2 underline-offset-8 hover:text-foreground transition-colors">
-              {stats?.achievements?.length > 0 ? "View Your Badges" : "View Detailed Governance"}
+              {stats?.achievements?.length > 0 ? "View Your Badges" : "View Your Profile"}
             </button>
           </div>
           </div>

@@ -24,6 +24,7 @@ export function Projects() {
   const [projects, setProjects] = useState([]);
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeDifficulty, setActiveDifficulty] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
@@ -43,10 +44,9 @@ export function Projects() {
           title: project.title,
           description: project.description,
           type: 'project',
-          resource_id: project.id,
-          saved_date: new Date().toLocaleDateString()
+          resource_id: project.id
        });
-       success("Project saved to your Archive Vault.");
+       success(`" ${project.title} " synchronized to Archive Vault.`);
     } catch (err) {
        toastError("Failed to synchronize archive.");
     }
@@ -67,9 +67,21 @@ export function Projects() {
 
   useEffect(() => {
     let result = projects;
+    
+    // Category Filter
     if (activeCategory !== "all") {
-      result = result.filter((p) => p.category?.toLowerCase() === activeCategory);
+      result = result.filter((p) => p.category === activeCategory);
     }
+    
+    // Difficulty Filter
+    if (activeDifficulty !== "all") {
+      result = result.filter((p) => 
+        (p.difficulty?.toLowerCase() === activeDifficulty.toLowerCase()) || 
+        (p.difficulty_level?.toLowerCase() === activeDifficulty.toLowerCase())
+      );
+    }
+
+    // Search Filter
     if (searchQuery) {
       result = result.filter((p) => 
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -77,7 +89,7 @@ export function Projects() {
       );
     }
     setFilteredProjects(result);
-  }, [activeCategory, searchQuery, projects]);
+  }, [activeCategory, activeDifficulty, searchQuery, projects]);
 
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -111,22 +123,42 @@ export function Projects() {
           </div>
         </div>
 
-        {/* Global Filters */}
-        <div className="flex flex-wrap gap-4 mb-16 overflow-x-auto pb-4 no-scrollbar">
+        {/* Category Filters */}
+        <div className="flex flex-wrap gap-3 mb-8 overflow-x-auto pb-2 no-scrollbar">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all whitespace-nowrap border ${
                 activeCategory === cat.id 
-                ? "bg-primary text-white border-primary shadow-teal-500/20" 
+                ? "bg-primary text-white border-primary shadow-lg shadow-teal-500/20" 
                 : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
               }`}
             >
-              <cat.icon size={16} />
+              <cat.icon size={14} />
               {cat.label}
             </button>
           ))}
+        </div>
+
+        {/* Difficulty Filters */}
+        <div className="flex items-center gap-4 mb-16 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
+           <Filter size={16} className="text-muted-foreground" />
+           <div className="flex p-1 bg-muted/50 border border-border rounded-xl gap-1">
+              {['all', 'beginner', 'intermediate', 'hard'].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setActiveDifficulty(lvl === 'hard' ? 'advanced' : lvl)}
+                  className={`px-5 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                    (activeDifficulty === lvl || (activeDifficulty === 'advanced' && lvl === 'hard')) 
+                    ? "bg-white text-primary shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {lvl}
+                </button>
+              ))}
+           </div>
         </div>
 
         {/* Archives Grid */}
@@ -158,22 +190,22 @@ export function Projects() {
                 </p>
 
                 <div className="space-y-6 relative z-10 mt-auto">
-                   <div className="flex flex-wrap gap-2 text-foreground">
-                      {(project.tags || ["Node.js", "React", "PostgreSQL"]).map((tag, i) => (
-                        <span key={i} className="text-[10px] font-bold text-primary bg-primary/5 px-3 py-1 rounded-lg">
-                          #{tag}
-                        </span>
-                      ))}
-                   </div>
+                     <div className="flex flex-wrap gap-2 text-foreground">
+                        {(Array.isArray(project.tags) ? project.tags : ["Engineering", "Architecture"]).map((tag, i) => (
+                          <span key={i} className="text-[10px] font-bold text-primary bg-primary/5 px-3 py-1 rounded-lg">
+                            #{tag}
+                          </span>
+                        ))}
+                     </div>
 
                     <div className="pt-6 border-t border-border flex items-center justify-between">
                        <div className="flex items-center gap-6">
                           <button 
                             onClick={() => {
-                              if (project.link && project.link !== "#") {
+                              if (project.link && project.link.startsWith("http")) {
                                 window.open(project.link, "_blank", "noopener,noreferrer");
                               } else {
-                                toastError("Source repository or live link not available for this legacy archive.");
+                                info("This specific project archive is purely conceptual and doesn't have an external link.");
                               }
                             }}
                             className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest hover:underline"

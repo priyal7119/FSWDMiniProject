@@ -194,7 +194,7 @@ export function Header() {
       {isSidebarOpen && (
         <>
           <div className="fixed inset-0 z-[120] bg-background/80 backdrop-blur-md animate-in fade-in duration-500" onClick={() => setIsSidebarOpen(false)} />
-          <aside className="fixed top-0 left-0 bottom-0 z-[130] w-80 bg-card border-r border-border shadow-2xl p-8 flex flex-col animate-in slide-in-from-left-full duration-500">
+          <aside className="fixed top-0 left-0 bottom-0 z-[130] w-80 bg-card border-r border-border shadow-2xl p-8 flex flex-col animate-in slide-in-from-left-full duration-500 overflow-y-auto">
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-3xl font-black tracking-tight font-header text-foreground">
                   Explore <span className="text-primary">Features.</span>

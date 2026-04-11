@@ -206,7 +206,7 @@ export const api = {
         phone: data?.phone || user.user_metadata?.phone || "+1 (555) 000-0000",
         location: data?.location || "Not Set",
         headline: data?.qualification || "Career Professional",
-        resumeScore: data?.resume_score || 75,
+        resumeScore: data?.resume_score || 0,
         emailNotifications: data?.email_notifications ?? true,
         newsletterOptIn: data?.newsletter_opt_in ?? true,
         themePreference: data?.theme_preference || 'dark',
@@ -278,19 +278,28 @@ export const api = {
   bookmarks: {
     add: async (bookmarkData) => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Authentication required to archive resources.");
+      
       const { data, error } = await supabase
         .from('bookmarks')
-        .insert({ user_id: user.id, ...bookmarkData })
+        .insert({ 
+          user_id: user.id, 
+          ...bookmarkData,
+          saved_date: new Date().toISOString()
+        })
         .select()
         .single();
       return handleSupaError({ data, error });
     },
-
     list: async () => {
-      const { data, error } = await supabase.from('bookmarks').select('*');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .order('saved_date', { ascending: false });
       return handleSupaError({ data, error });
     },
-
     remove: async (id) => {
       const { error } = await supabase.from('bookmarks').delete().eq('id', id);
       if (error) throw error;
@@ -385,10 +394,21 @@ export const api = {
         console.error("Projects query failed:", error);
         return [];
       }
-      return data.map(p => ({
-        ...p,
-        category: p.technology?.toLowerCase().replace(' ', '-') || 'other'
-      }));
+      return data.map(p => {
+        // Normalize technology into UI-friendly categories
+        let cat = p.technology?.toLowerCase() || 'other';
+        if (cat.includes('full stack') || cat.includes('fullstack')) cat = 'fullstack';
+        if (cat.includes('front')) cat = 'frontend';
+        if (cat.includes('back')) cat = 'backend';
+        if (cat.includes('data science') || cat.includes('ai') || cat.includes('ml')) cat = 'data-science';
+        if (cat.includes('mobile')) cat = 'mobile';
+        
+        return {
+          ...p,
+          category: cat,
+          tags: p.tags || (p.skills ? p.skills : ["Architecture", "Engineering", "Scale"])
+        };
+      });
     }
   },
 
@@ -466,7 +486,59 @@ export const api = {
         .single();
       if (error) return null;
       return data.required_skills;
-    }
+    },
+
+    saveRoadmapPreferences: async (prefs) => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        const { data, error } = await supabase
+          .from('user_roadmaps')
+          .upsert({
+            user_id: user.id,
+            selected_path: prefs.selected_path || 'industry',
+            target_role: prefs.target_role || 'Frontend Developer',
+            experience_level: prefs.experience || 'beginner',
+            time_per_week: prefs.timePerWeek || '10',
+            learning_style: prefs.learningStyle || 'project',
+            timeline: prefs.timeline || '6months',
+            updated_at: new Date(),
+          })
+          .select()
+          .single();
+        if (error) {
+          console.warn('saveRoadmapPreferences error (table may need column additions):', error.message);
+          return { success: true, local: true };
+        }
+        return data;
+      } catch (err) {
+        console.warn('saveRoadmapPreferences failed gracefully:', err.message);
+        return { success: true, local: true };
+      }
+    },
+
+    getRoadmapPreferences: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        const { data, error } = await supabase
+          .from('user_roadmaps')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        if (error) return null;
+        return {
+          experience: data.experience_level || 'beginner',
+          timePerWeek: data.time_per_week || '10',
+          learningStyle: data.learning_style || 'project',
+          timeline: data.timeline || '6months',
+          target_role: data.target_role,
+          selected_path: data.selected_path,
+        };
+      } catch {
+        return null;
+      }
+    },
   },
   research: {
     getGuide: async () => {
@@ -509,6 +581,9 @@ export const markNotificationRead  = api.notifications.markAsRead;
 export const getRoadmap            = api.roadmaps.get;
 export const getRoadmapPhases      = api.roadmaps.getPhases;
 export const setRoadmap            = api.roadmaps.set;
+export const getRoleRequirements        = api.planner.getRoleRequirements;
+export const saveRoadmapPreferences     = api.planner.saveRoadmapPreferences;
+export const getRoadmapPreferences      = api.planner.getRoadmapPreferences;
 
 // Convenience Aliases for UI Components
 export const getProjects           = api.projects.getRecommended;

@@ -74,7 +74,13 @@ export function Login() {
       });
 
       if (loginError) {
-        toastError(loginError.message === "Invalid login credentials" ? "Invalid email or password." : loginError.message);
+        let msg = loginError.message;
+        if (msg === "Invalid login credentials") {
+          msg = "Incorrect Email or Password. Please check your credentials.";
+        } else if (msg.includes("Email not confirmed")) {
+          msg = "Please verify your email address to log in.";
+        }
+        toastError(msg);
         setLoading(false);
         return;
       }

@@ -204,15 +204,17 @@ export function Bookmarks() {
                                  {item.description}
                               </p>
 
-                              <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
-                                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Saved {item.savedDate || 'Recently'}</span>
-                                 <button
-                                    onClick={() => handleOpen(item)}
-                                    className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
-                                 >
-                                    <ExternalLink size={16} />
-                                 </button>
-                              </div>
+                               <div className="mt-auto pt-6 border-t border-border flex items-center justify-between">
+                                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                                     Saved {item.saved_date ? new Date(item.saved_date).toLocaleDateString() : 'Recently'}
+                                  </span>
+                                  <button
+                                     onClick={() => handleOpen(item)}
+                                     className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                                  >
+                                     <ExternalLink size={16} />
+                                  </button>
+                               </div>
                            </div>
                         ))}
                      </div>
