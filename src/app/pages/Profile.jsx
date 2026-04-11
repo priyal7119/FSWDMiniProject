@@ -143,12 +143,16 @@ export function Profile() {
                </h3>
                <div className="space-y-6">
                   {[
-                    { label: "Resume IQ", value: userStats.resumeScore, icon: FileText, suffix: "%" },
+                    { label: "Resume IQ", value: userStats.resumeScore, icon: FileText, suffix: "%", action: handleResumeStudio },
                     { label: "Skills Gained", value: userStats.skillsLearned, icon: Zap, suffix: "" },
                     { label: "Projects Case", value: userStats.projectsCompleted, icon: Briefcase, suffix: "" },
                     { label: "Interviews", value: userStats.interviewsPrepped, icon: Award, suffix: "" },
                   ].map((stat, i) => (
-                    <div key={i} className="flex items-center justify-between p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-border transition-all group">
+                    <div 
+                      key={i} 
+                      onClick={stat.action || null}
+                      className={`flex items-center justify-between p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-border transition-all group ${stat.action ? 'cursor-pointer hover:bg-muted/40 active:scale-[0.98]' : ''}`}
+                    >
                        <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-white border border-border rounded-xl flex items-center justify-center text-[var(--mapout-secondary)] group-hover:scale-105 transition-transform shadow-sm">
                              <stat.icon size={20} />

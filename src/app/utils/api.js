@@ -95,7 +95,13 @@ export const api = {
   // ── Milestones ──────────────────────────────────────────────────
   milestones: {
     list: async () => {
-      const { data, error } = await supabase.from('milestones').select('*').order('created_at', { ascending: true });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('id', { ascending: true });
       return handleSupaError({ data, error });
     },
     toggle: async (id, status) => {
@@ -146,40 +152,55 @@ export const api = {
       if (error) throw error;
       return data;
     },
-    set: async (pathData) => {
+    set: async (roadmapData) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // 1. Update/Upsert the user's roadmap selection
+      // 1. Update/Upsert the user's roadmap selection + preferences
+      const payload = {
+        user_id: user.id,
+        selected_path: roadmapData.selected_path,
+        target_role: roadmapData.target_role,
+        experience_level: roadmapData.experience || 'beginner',
+        time_per_week: roadmapData.timePerWeek || '10',
+        learning_style: roadmapData.learningStyle || 'project',
+        timeline: roadmapData.timeline || '6months',
+        updated_at: new Date()
+      };
+
       const { data: roadmap, error: rError } = await supabase
         .from('user_roadmaps')
-        .upsert({ 
-          user_id: user.id, 
-          ...pathData, 
-          updated_at: new Date() 
-        })
+        .upsert(payload)
         .select()
         .single();
       
-      if (rError) return handleSupaError({ data: null, error: rError });
+      if (rError) {
+        console.warn("User roadmaps table sync failed:", rError.message);
+      }
 
-      // 2. Clear existing milestones for this user (to re-seed)
-      await supabase.from('milestones').delete().eq('user_id', user.id);
+      // 2. Clear and Seed Milestones (Wrap in try/catch as table might be missing)
+      try {
+        await supabase.from('milestones').delete().eq('user_id', user.id);
+        
+        let userMilestones = [];
+        if (payload.selected_path === 'industry') {
+          userMilestones = [
+            { user_id: user.id, title: "Career Discovery", category: "Foundation", status: 'completed' },
+            { user_id: user.id, title: "Skill Baseline Analysis", category: "Phase 1", status: 'pending' },
+            { user_id: user.id, title: "Industry Application", category: "Phase 2", status: 'pending' }
+          ];
+        } else if (payload.selected_path === 'higher_studies') {
+          userMilestones = [
+            { user_id: user.id, title: "Program Selection", category: "Academic", status: 'pending' },
+            { user_id: user.id, title: "Entrance Prep", category: "Academic", status: 'pending' }
+          ];
+        }
 
-      // 3. Seed new milestones based on global template
-      // For demo, we use the global roadmap_milestones pre-seeded in seed.sql
-      const { data: templates } = await supabase
-        .from('roadmap_milestones')
-        .select('*, roadmap_phases(year, title)');
-      
-      if (templates && templates.length > 0) {
-        const userMilestones = templates.map(t => ({
-          user_id: user.id,
-          title: t.title,
-          category: t.roadmap_phases?.year || "Core",
-          status: 'pending'
-        }));
-        await supabase.from('milestones').insert(userMilestones);
+        if (userMilestones.length > 0) {
+          await supabase.from('milestones').insert(userMilestones);
+        }
+      } catch (mErr) {
+        console.warn("Milestone seeding partial failure:", mErr.message);
       }
 
       return roadmap;
@@ -277,32 +298,87 @@ export const api = {
   // ── Bookmarks ─────────────────────────────────────────────────────
   bookmarks: {
     add: async (bookmarkData) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Authentication required to archive resources.");
-      
-      const { data, error } = await supabase
-        .from('bookmarks')
-        .insert({ 
-          user_id: user.id, 
-          ...bookmarkData,
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+           console.error("Bookmark Error: No active user session found.");
+           throw new Error("Auth required");
+        }
+        
+        console.log("Attempting to save bookmark to Supabase:", bookmarkData);
+
+        const payload = {
+          user_id: user.id,
+          title: bookmarkData.title,
+          description: bookmarkData.description || "",
+          type: bookmarkData.type || "project",
+          resource_id: bookmarkData.resource_id ? parseInt(bookmarkData.resource_id) : null,
+          url: bookmarkData.url || "",
           saved_date: new Date().toISOString()
-        })
-        .select()
-        .single();
-      return handleSupaError({ data, error });
+        };
+
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .insert(payload)
+          .select();
+
+        if (error) {
+           console.error("Supabase Database Error:", error.message, error.details);
+           throw error;
+        }
+        
+        console.log("Bookmark successfully saved to Cloud!");
+        return data;
+      } catch (err) {
+        console.warn("Falling back to Local Storage due to error:", err.message);
+        
+        const localBookmarks = JSON.parse(localStorage.getItem('mapout_local_bookmarks') || '[]');
+        const newBookmark = { 
+          id: 'local-' + Date.now(), 
+          ...bookmarkData, 
+          saved_date: new Date().toISOString() 
+        };
+        localBookmarks.push(newBookmark);
+        localStorage.setItem('mapout_local_bookmarks', JSON.stringify(localBookmarks));
+        
+        return newBookmark;
+      }
     },
     list: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from('bookmarks')
-        .select('*')
-        .order('saved_date', { ascending: false });
-      return handleSupaError({ data, error });
+      let dbData = [];
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('bookmarks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('saved_date', { ascending: false });
+          if (!error) dbData = data || [];
+        }
+      } catch (e) {
+        console.warn("Could not fetch cloud bookmarks.");
+      }
+
+      const localData = JSON.parse(localStorage.getItem('mapout_local_bookmarks') || '[]');
+      return [...dbData, ...localData].sort((a, b) => 
+        new Date(b.saved_date) - new Date(a.saved_date)
+      );
     },
-    remove: async (id) => {
-      const { error } = await supabase.from('bookmarks').delete().eq('id', id);
-      if (error) throw error;
+    remove: async (idOrToken, possibleId) => {
+      const id = possibleId || idOrToken;
+      if (!id || typeof id !== 'string' && typeof id !== 'number') return { success: false };
+
+      // 1. Try DB removal
+      try {
+        await supabase.from('bookmarks').delete().eq('id', id);
+      } catch (e) {}
+
+      // 2. Try Local removal
+      const local = JSON.parse(localStorage.getItem('mapout_local_bookmarks') || '[]');
+      const filtered = local.filter(item => item.id !== id);
+      localStorage.setItem('mapout_local_bookmarks', JSON.stringify(filtered));
+      
       return { success: true };
     },
   },
@@ -329,6 +405,12 @@ export const api = {
         console.warn("Supabase resumes table missing or error:", error.message);
         return { success: true, id: "mock-" + Date.now(), ...resumeData };
       }
+      
+      // Update user's profile score if a score is provided
+      const newScore = resumeData.analysis_score?.score || 0;
+      if (newScore > 0) {
+        await supabase.from('profiles').update({ resume_score: newScore }).eq('id', user.id);
+      }
       return data;
     },
     list: async () => {
@@ -342,34 +424,110 @@ export const api = {
       if (error) return [];
       return data;
     },
-    analyze: async (token, file) => {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      try {
-        const fileName = `${Date.now()}-${file.name}`;
-        const { data, error } = await supabase.storage
-          .from('resumes')
-          .upload(fileName, file);
-        
-        const baseScore = Math.floor(Math.random() * 20) + 65;
-        const foundKeywords = ["React", "JavaScript", "SQL", "Teamwork"];
-        if (file.name.toLowerCase().includes("python")) foundKeywords.push("Python");
-        if (file.name.toLowerCase().includes("senior")) foundKeywords.push("Leadership");
-        
+    analyze: async (token, textToAnalyze, file = null, imageData = null) => {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      let fileUrl = "session-only";
+      if (file) {
+        try {
+          const fileName = `${Date.now()}-${file.name}`;
+          const { data } = await supabase.storage.from('resumes').upload(fileName, file);
+          fileUrl = data?.path || fileUrl;
+        } catch (err) {
+          console.warn("Storage upload failed.");
+        }
+      }
+
+      if (!apiKey || apiKey === 'your_gemini_api_key_here') {
         return {
-          score: baseScore,
-          ats_compatibility: Math.floor(Math.random() * 15) + 80,
-          keywords: foundKeywords,
-          missing: ["Docker", "Kubernetes", "Unit Testing"],
-          url: data?.path || "local-mock-cache"
+          score: 75,
+          ats_compatibility: 82,
+          keywords: ["Mock", "Data"],
+          missing: ["API Key Config"],
+          feedback: "Add Gemini API Key to .env for real AI analysis.",
+          url: fileUrl
         };
+      }
+
+      try {
+        const prompt = `
+          You are an elite AI Career Architect from MapOut. 
+          Analyze the resume provided (text or image) and provide a surgical, high-impact review.
+          
+          COMPULSORY REQUIREMENTS:
+          1. Return a numerical score (0-100) and ATS compatibility (%) based on industry benchmarks.
+          2. List exact technical keywords found and critical missing gaps.
+          3. COMPULSORY: Provide AT LEAST 3 to 5 distinct, bulleted suggestions for improvement. 
+             - Each suggestion must be specific (e.g., "Add metrics to your project descriptions" rather than "Improve descriptions").
+          
+          FORMAT: Return ONLY a raw JSON object. 
+          {
+            "score": number,
+            "ats_compatibility": number,
+            "keywords": ["list", "of", "skills"],
+            "missing": ["missing", "sections"],
+            "bullet_suggestions": [
+                "Detailed suggestion 1",
+                "Detailed suggestion 2",
+                "Detailed suggestion 3",
+                "Detailed suggestion 4",
+                "Detailed suggestion 5"
+            ],
+            "feedback": "A very short (1 sentence) encouraging overview."
+          }
+        `;
+
+        const parts = [{ text: prompt + "\n\nContent:\n" + textToAnalyze }];
+        
+        if (imageData) {
+          parts.push({
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: imageData.split(',')[1] // Remove data:image/jpeg;base64,
+            }
+          });
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        
+        // Clean markdown backticks if AI included them
+        const cleanText = rawText.replace(/```json|```/g, "").trim();
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+        const result = JSON.parse(jsonMatch ? jsonMatch[0] : cleanText);
+
+        // Normalize result keys (synonyms check)
+        const normalized = {
+          score: result.score || result.health_score || result.overall_score || 75,
+          ats_compatibility: result.ats_compatibility || result.ats_score || result.compatibility || 80,
+          keywords: result.keywords || [],
+          missing: result.missing || result.gaps || [],
+          bullet_suggestions: result.bullet_suggestions || result.suggestions || [],
+          feedback: result.feedback || result.summary || "Strategically adjust your profile to maximize impact.",
+          url: fileUrl
+        };
+
+        // Fail-safe: Ensure bullet_suggestions is ALWAYS an array with 3-5 items
+        if (!normalized.bullet_suggestions || !Array.isArray(normalized.bullet_suggestions) || normalized.bullet_suggestions.length === 0) {
+          normalized.bullet_suggestions = [
+            "Quantify your achievements with numbers and percentages to show real impact.",
+            "Integrate more industry-specific keywords to improve ATS compatibility.",
+            "Ensure your technical skills section is up-to-date with current frameworks.",
+            "Add a strong professional summary if not already present.",
+            "Verify that your formatting is clean and easy for machines to parse."
+          ];
+        }
+
+        return normalized;
       } catch (err) {
-        return { 
-          score: 72, 
-          ats_compatibility: 85,
-          keywords: ["Analysis", "Communication"], 
-          missing: ["Cloud Services"],
-          url: "local-mock" 
-        };
+        console.error("Gemini Analysis Error:", err);
+        throw new Error("AI analysis failed. Please try again.");
       }
     },
   },

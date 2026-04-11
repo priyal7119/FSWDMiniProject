@@ -4,7 +4,7 @@ import {
   Briefcase, Search as SearchIcon, ExternalLink, 
   Code, Database, Layout, Smartphone, PieChart, 
   Tag, Filter, ChevronRight, Zap, Trophy, ArrowRight,
-  Bookmark, Archive
+  Bookmark, Archive, X
 } from "lucide-react";
 import { getProjects, addBookmark } from "../utils/api.js";
 import { t } from "../utils/translate.js";
@@ -27,6 +27,7 @@ export function Projects() {
   const [activeDifficulty, setActiveDifficulty] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState(null);
   const token = localStorage.getItem("token");
   const { success, error: toastError, info } = useToast();
 
@@ -46,9 +47,9 @@ export function Projects() {
           type: 'project',
           resource_id: project.id
        });
-       success(`" ${project.title} " synchronized to Archive Vault.`);
+       success(`" ${project.title} " added to your Bookmarks.`);
     } catch (err) {
-       toastError("Failed to synchronize archive.");
+       toastError("Failed to add bookmark.");
     }
   };
 
@@ -201,22 +202,17 @@ export function Projects() {
                     <div className="pt-6 border-t border-border flex items-center justify-between">
                        <div className="flex items-center gap-6">
                           <button 
-                            onClick={() => {
-                              if (project.link && project.link.startsWith("http")) {
-                                window.open(project.link, "_blank", "noopener,noreferrer");
-                              } else {
-                                info("This specific project archive is purely conceptual and doesn't have an external link.");
-                              }
-                            }}
-                            className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest hover:underline"
+                            onClick={() => setSelectedProject(project)}
+                            className="flex items-center gap-2 text-teal-600 font-black text-[10px] uppercase tracking-widest hover:text-teal-700 transition-colors"
                           >
-                            View Project <ExternalLink size={14} />
+                            View Details <ExternalLink size={14} />
                           </button>
                           <button 
                             onClick={() => handleSave(project)}
-                            className="flex items-center gap-2 text-muted-foreground font-black text-[10px] uppercase tracking-widest hover:text-primary transition-colors"
+                            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all group/save"
                           >
-                             <Archive size={14} /> Archive
+                            <Archive size={16} className="group-hover/save:scale-110 transition-transform" />
+                            <span className="font-black text-[10px] uppercase tracking-widest">Archive</span>
                           </button>
                        </div>
                        <div className="flex items-center gap-1 text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">
@@ -255,6 +251,75 @@ export function Projects() {
            </button>
         </div>
       </div>
+
+      {/* Project Details Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/10 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-300">
+          <div className="bg-slate-50/95 border border-slate-200 w-full max-w-2xl rounded-[3.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] overflow-hidden animate-in zoom-in-95 backdrop-blur-md">
+            <div className="p-10">
+              <div className="flex justify-between items-start mb-8">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                  <Zap size={28} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleSave(selectedProject)}
+                    className="p-3 bg-muted rounded-full hover:bg-primary/10 hover:text-primary transition-all group/bookmark"
+                    title="Bookmark Project"
+                  >
+                    <Bookmark size={20} className="group-active/bookmark:scale-90 transition-transform" />
+                  </button>
+                  <button onClick={() => setSelectedProject(null)} className="p-3 bg-muted rounded-full hover:bg-rose-50 text-muted-foreground hover:text-rose-500 transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <h2 className="text-3xl font-black tracking-tight text-foreground mb-4">{selectedProject.title}</h2>
+              <div className="flex flex-wrap gap-2 mb-8">
+                <span className="px-4 py-1.5 bg-muted rounded-full text-[10px] font-black uppercase tracking-widest text-muted-foreground border border-border">
+                  {selectedProject.category || "General"}
+                </span>
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                  selectedProject.difficulty === 'advanced' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
+                  selectedProject.difficulty === 'intermediate' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                  'bg-teal-50 text-teal-600 border-teal-100'
+                }`}>
+                  {selectedProject.difficulty || "Beginner"}
+                </span>
+              </div>
+
+              <div className="space-y-8">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Project Overview</h4>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">{selectedProject.description}</p>
+                </div>
+
+                <div className="bg-white p-8 rounded-[2rem] border-2 border-slate-950 shadow-sm relative group/outcomes">
+                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-slate-950 text-white rounded-full flex items-center justify-center shadow-lg group-hover/outcomes:scale-110 transition-transform">
+                    <Trophy size={14} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+                    <Trophy size={14} /> Expected Outcomes
+                  </h4>
+                  <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                    {selectedProject.expectations || "This project expects you to demonstrate proficiency in current industry frameworks, maintain professional documentation, and implement scalable architectural patterns as defined in the technical guidelines."}
+                  </p>
+                </div>
+
+                <div className="pt-6">
+                  <button 
+                    onClick={() => setSelectedProject(null)}
+                    className="w-full py-4 border border-border text-muted-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-muted transition-all"
+                  >
+                    Close Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

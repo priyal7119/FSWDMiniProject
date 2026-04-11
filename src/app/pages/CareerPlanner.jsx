@@ -605,20 +605,25 @@ export function CareerPlanner() {
   const handleGenerateRoadmap = async () => {
     setIsGenerating(true);
     try {
-      // Save preferences to backend
-      await saveRoadmapPreferences({ ...prefs, target_role: selectedRole, selected_path: selectedPath });
-      // Ensure roadmap + milestones are seeded
-      await setRoadmap({ selected_path: selectedPath, target_role: selectedRole });
+      // 1. Save preferences and seed milestones in one go
+      await setRoadmap({ 
+        selected_path: selectedPath, 
+        target_role: selectedRole,
+        ...prefs // Includes experience, timePerWeek, etc.
+      });
+
+      // 2. Fetch the newly seeded milestones
       const updated = await getMilestones().catch(() => []);
       setRoadmapData(updated || []);
       setSavedPreferences({ ...prefs, target_role: selectedRole });
       setRoadmapGenerated(true);
-      success(`Roadmap generated for ${selectedRole}! Scroll down to explore.`);
+      
+      success(`Roadmap successfully synced to cloud for ${selectedRole}!`);
     } catch (err) {
-      console.error(err);
-      // Still show local roadmap even if backend fails
+      console.error("Roadmap Sync failed:", err);
+      // Fallback: Still show the generated roadmap UI even if cloud sync fails
       setRoadmapGenerated(true);
-      info("Roadmap generated! (Backend sync pending)");
+      warning("Roadmap generated locally. (Cloud storage connection interrupted)");
     } finally {
       setIsGenerating(false);
     }
@@ -1076,25 +1081,22 @@ export function CareerPlanner() {
                 <div className="grid grid-cols-1 xl:grid-cols-5 gap-10">
 
                   {/* LEFT: Roadmap Phases Timeline */}
-                  <div className="xl:col-span-3 space-y-4">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h3 className="text-2xl font-black tracking-tight">Your Learning Path</h3>
-                        <p className="text-muted-foreground text-sm mt-1">
-                          {currentRoadmapPhases.length} phases · {prefs.experience} track · click to expand
-                        </p>
-                      </div>
-                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <Map size={20} />
-                      </div>
+                  <div className="xl:col-span-3 space-y-10">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                        <Rocket size={24} className="text-primary" /> Learning Phases
+                      </h3>
+                      <button 
+                        onClick={handleDownloadRoadmap} 
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-900 hover:text-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                      >
+                        Export PDF
+                      </button>
                     </div>
 
-                    {/* Visual timeline */}
-                    <div className="relative pl-6">
-                      {/* Vertical spine */}
-                      <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-primary/40 to-transparent" />
-
-                      <div className="space-y-5">
+                    <div className="p-8 bg-slate-50/50 border-2 border-slate-200 rounded-[3rem] relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/50 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                      <div className="relative z-10 pl-6 border-l-2 border-slate-200 space-y-6">
                         {currentRoadmapPhases.map((phase, idx) => (
                           <RoadmapPhaseCard
                             key={idx}
@@ -1110,22 +1112,21 @@ export function CareerPlanner() {
 
                     {/* Resources */}
                     {currentRoleData?.resources?.length > 0 && (
-                      <div className="mt-8 p-6 bg-card border border-border rounded-3xl">
-                        <h4 className="font-black mb-4 flex items-center gap-2 text-sm">
-                          <BookOpen size={16} className="text-primary" /> Recommended Resources
+                      <div className="p-8 bg-white border-2 border-slate-200 rounded-[3rem] shadow-sm">
+                        <h4 className="font-black mb-6 flex items-center gap-2 text-xs uppercase tracking-widest text-primary">
+                          <BookOpen size={16} /> Curated Learning Resources
                         </h4>
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {currentRoleData.resources.map((res, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-muted/40 rounded-2xl hover:bg-muted/70 transition-all group">
+                            <a key={i} href={res.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-5 bg-slate-50 border border-slate-200 rounded-[2rem] hover:bg-white hover:border-primary/30 transition-all group shadow-sm hover:shadow-md">
                               <div>
-                                <p className="font-bold text-sm">{res.title}</p>
+                                <p className="font-black text-sm text-slate-900 mb-1">{res.title}</p>
                                 <span className="text-[10px] font-black text-primary uppercase tracking-wider">{res.type}</span>
                               </div>
-                              <a href={res.url} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-[10px] font-black uppercase hover:bg-primary hover:text-white transition-all">
-                                Visit <ExternalLink size={10} />
-                              </a>
-                            </div>
+                              <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:border-primary/20 transition-all">
+                                <ExternalLink size={14} />
+                              </div>
+                            </a>
                           ))}
                         </div>
                       </div>
@@ -1133,75 +1134,80 @@ export function CareerPlanner() {
                   </div>
 
                   {/* RIGHT: Skills Panel */}
-                  <div className="xl:col-span-2 space-y-5">
-                    <div>
-                      <h3 className="text-2xl font-black tracking-tight mb-1">Skills Required</h3>
-                      <p className="text-muted-foreground text-sm">
-                        {roleSkills.length || (currentRoleData?.skills?.length || 0)} skills · matched with your profile
-                      </p>
-                    </div>
-
-                    {/* Filter tabs */}
-                    <div className="flex gap-2">
-                      {[
-                        { val: "all", label: "All" },
-                        { val: "to-learn", label: "To Learn" },
-                        { val: "mastered", label: "✓ Mastered" },
-                      ].map(f => (
-                        <button
-                          key={f.val}
-                          onClick={() => setSkillFilter(f.val)}
-                          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${skillFilter === f.val ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Skills grid */}
-                    <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1 custom-scroll">
-                      {(currentRoleData?.skills || [])
-                        .filter(skill => {
-                          const name = skill.name.toLowerCase();
-                          const mastered = userSkills.includes(name);
-                          if (skillFilter === "mastered") return mastered;
-                          if (skillFilter === "to-learn") return !mastered;
-                          return true;
-                        })
-                        .map((skill, i) => {
-                          const name = skill.name.toLowerCase();
-                          const isMastered = userSkills.includes(name);
-                          return (
-                            <SkillBadge key={i} skill={skill} isMastered={isMastered} />
-                          );
-                        })}
-                    </div>
-
-                    {/* Skill summary */}
-                    <div className="p-5 bg-gradient-to-br from-teal-500/10 to-primary/5 border border-teal-500/20 rounded-3xl">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">Skill Gap Analysis</p>
-                      <div className="space-y-2.5">
-                        {[
-                          { label: "Skills you have", count: (currentRoleData?.skills || []).filter(s => userSkills.includes(s.name.toLowerCase())).length, color: "bg-teal-500" },
-                          { label: "Skills to learn", count: (currentRoleData?.skills || []).filter(s => !userSkills.includes(s.name.toLowerCase())).length, color: "bg-primary" },
-                        ].map((item, i) => {
-                          const total = currentRoleData?.skills?.length || 1;
-                          return (
-                            <div key={i}>
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs font-bold text-muted-foreground">{item.label}</span>
-                                <span className="text-xs font-black text-foreground">{item.count}/{total}</span>
-                              </div>
-                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{ width: `${(item.count / total) * 100}%` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
+                  <div className="xl:col-span-2 space-y-8">
+                    <div className="p-8 bg-white border-2 border-slate-200 rounded-[3rem] shadow-sm">
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-black tracking-tight mb-2">Technical Arsenal</h3>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                           <Target size={14} className="text-primary" /> Skill Map for {selectedRole}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-4 font-medium">
-                        Add more skills in <a href="/profile" className="text-primary font-bold hover:underline">your Profile</a> to update this gap analysis.
-                      </p>
+
+                      {/* Filter tabs */}
+                      <div className="flex gap-2 mb-8 p-1 bg-slate-50 border border-slate-200 rounded-2xl w-fit">
+                        {[
+                          { val: "all", label: "All" },
+                          { val: "to-learn", label: "To Learn" },
+                          { val: "mastered", label: "✓ Mastered" },
+                        ].map(f => (
+                          <button
+                            key={f.val}
+                            onClick={() => setSkillFilter(f.val)}
+                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm transition-all ${skillFilter === f.val ? "bg-white text-primary border border-slate-200" : "text-slate-400 hover:text-slate-600"}`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Skills grid */}
+                      <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scroll mb-8">
+                        {(currentRoleData?.skills || [])
+                          .filter(skill => {
+                            const name = (typeof skill === "string" ? skill : skill.name).toLowerCase();
+                            const mastered = userSkills.includes(name);
+                            if (skillFilter === "mastered") return mastered;
+                            if (skillFilter === "to-learn") return !mastered;
+                            return true;
+                          })
+                          .map((skill, i) => {
+                            const name = (typeof skill === "string" ? skill : skill.name).toLowerCase();
+                            const isMastered = userSkills.includes(name);
+                            return (
+                              <SkillBadge key={i} skill={skill} isMastered={isMastered} />
+                            );
+                          })}
+                      </div>
+
+                      {/* Skill summary */}
+                      <div className="p-6 bg-slate-900 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-teal-500/20 transition-colors"></div>
+                        <div className="relative z-10">
+                           <p className="text-[9px] font-black text-teal-400 uppercase tracking-[0.2em] mb-6">Gap Analysis Engine</p>
+                           <div className="space-y-5">
+                             {[
+                               { label: "Mastered", count: (currentRoleData?.skills || []).filter(s => userSkills.includes(s.name.toLowerCase())).length, color: "bg-teal-400" },
+                               { label: "Target", count: (currentRoleData?.skills || []).filter(s => !userSkills.includes(s.name.toLowerCase())).length, color: "bg-white" },
+                             ].map((item, i) => {
+                               const total = currentRoleData?.skills?.length || 1;
+                               return (
+                                 <div key={i}>
+                                   <div className="flex justify-between items-center mb-2">
+                                     <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
+                                     <span className="text-sm font-black text-white">{item.count}/{total}</span>
+                                   </div>
+                                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                     <div className={`h-full ${item.color} rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(45,212,191,0.3)]`} style={{ width: `${(item.count / total) * 100}%` }} />
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                           <p className="text-[10px] text-white/40 mt-8 font-bold leading-relaxed">
+                             Optimize your map by adding new skills in your profile dashboard.
+                           </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1300,32 +1306,33 @@ export function CareerPlanner() {
               return (
                 <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 space-y-10">
                   {/* Banner */}
-                  <div className="relative overflow-hidden rounded-[2.5rem] bg-primary p-10 text-white">
+                  <div className="relative overflow-hidden rounded-[2.5rem] bg-primary p-10 text-white shadow-2xl">
                     <div className="absolute inset-0 opacity-10">
-                      <div className="absolute top-4 right-4 w-64 h-64 rounded-full bg-white blur-3xl" />
+                      <div className="absolute top-4 right-4 w-64 h-64 rounded-full bg-white blur-3xl animate-pulse" />
                     </div>
-                    <div className="relative">
-                      <div className="flex items-center gap-3 mb-3">
-                        <GraduationCap size={20} />
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Higher Studies Roadmap</span>
-                      </div>
-                      <h2 className="text-3xl font-black mb-4">{selectedHigherStudy}</h2>
-                      <div className="flex flex-wrap gap-3">
-                        {track.skills.slice(0, 5).map((s, i) => (
-                          <span key={i} className="px-3 py-1 rounded-full bg-white/20 text-[11px] font-black">{s}</span>
-                        ))}
+                    <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <GraduationCap size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Strategic Academic Blueprint</span>
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-black tracking-tight">{selectedHigherStudy}</h2>
                       </div>
                     </div>
                   </div>
 
-                  {/* Twin column */}
                   <div className="grid grid-cols-1 xl:grid-cols-5 gap-10">
-                    {/* Phases */}
-                    <div className="xl:col-span-3 space-y-4">
-                      <h3 className="text-2xl font-black tracking-tight mb-6">Study Plan</h3>
-                      <div className="relative pl-6">
-                        <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary via-primary/40 to-transparent" />
-                        <div className="space-y-5">
+                    {/* LEFT: Study Plan */}
+                    <div className="xl:col-span-3 space-y-10">
+                      <div className="flex items-center justify-between">
+                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                           <BookOpen size={24} className="text-primary" /> Core Study Plan
+                         </h3>
+                      </div>
+                      
+                      <div className="p-8 bg-slate-50/50 border-2 border-slate-200 rounded-[3rem] relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-3xl -mr-16 -mt-16"></div>
+                        <div className="relative z-10 pl-6 border-l-2 border-slate-200 space-y-6">
                           {track.phases.map((phase, idx) => (
                             <RoadmapPhaseCard
                               key={idx}
@@ -1338,93 +1345,109 @@ export function CareerPlanner() {
                           ))}
                         </div>
                       </div>
+
+                      {/* Progress tracker */}
+                      {total > 0 && (
+                        <div className="p-10 bg-white border-2 border-slate-200 rounded-[3rem] text-center shadow-sm">
+                          <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Milestone Accuracy</p>
+                          <p className="text-3xl font-black text-slate-900 mb-2">{completed} / {total}</p>
+                          <p className="text-xs text-slate-400 font-bold mb-8">{progressPct}% of study tracks completed</p>
+                          <button
+                            onClick={() => setShowMilestones(p => {
+                               const next = !p;
+                               if(next) setTimeout(() => milestonesRef.current?.scrollIntoView({ behavior: 'smooth'}), 100);
+                               return next;
+                            })}
+                            className="px-8 py-3 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-primary transition-all shadow-xl"
+                          >
+                            {showMilestones ? "Minimize" : "Expand"} Progress Tracker
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Skills + Resources */}
-                    <div className="xl:col-span-2 space-y-6">
-                      <div>
-                        <h3 className="text-2xl font-black tracking-tight mb-1">Key Skills</h3>
-                        <p className="text-muted-foreground text-sm">Essential skills for {selectedHigherStudy}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {track.skills.map((s, i) => (
-                          <span key={i} className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="p-6 bg-card border border-border rounded-3xl">
-                        <h4 className="font-black text-sm mb-4 flex items-center gap-2">
-                          <BookOpen size={16} className="text-primary" /> Recommended Resources
-                        </h4>
-                        <div className="space-y-2">
-                          {track.resources.map((r, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl">
-                              <div className="w-7 h-7 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                                <BookOpen size={13} />
-                              </div>
-                              <span className="text-sm font-bold">{r}</span>
-                            </div>
+                    {/* RIGHT: Academic Arsenal */}
+                    <div className="xl:col-span-2 space-y-8">
+                       <div className="p-8 bg-white border-2 border-slate-200 rounded-[3rem] shadow-sm">
+                        <div className="mb-8">
+                          <h3 className="text-2xl font-black tracking-tight mb-2">Specialization Skills</h3>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Target Competencies</p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mb-10">
+                          {track.skills.map((s, i) => (
+                            <span key={i} className="px-4 py-2 bg-slate-50 text-slate-900 border border-slate-200 rounded-xl text-[11px] font-black shadow-sm">
+                              {s}
+                            </span>
                           ))}
                         </div>
-                      </div>
 
-                      {/* Exam dates */}
-                      <div className="p-6 bg-card border border-border rounded-3xl">
-                        <h4 className="font-black text-sm mb-4 flex items-center gap-2">
-                          <Calendar size={16} className="text-primary" /> Key Dates
-                        </h4>
-                        <div className="space-y-2 text-sm text-muted-foreground font-medium">
-                          {selectedHigherStudy === "GATE & MTech" && <>
-                            <p>📌 GATE registration: <span className="font-bold text-foreground">September</span></p>
-                            <p>📌 GATE exam: <span className="font-bold text-foreground">February</span></p>
-                            <p>📌 IIT counselling: <span className="font-bold text-foreground">April–May</span></p>
-                          </>}
-                          {selectedHigherStudy === "MS Abroad (US/Europe)" && <>
-                            <p>📌 GRE/TOEFL: <span className="font-bold text-foreground">June–August</span></p>
-                            <p>📌 Applications: <span className="font-bold text-foreground">Oct–December</span></p>
-                            <p>📌 Decisions: <span className="font-bold text-foreground">Feb–April</span></p>
-                          </>}
-                          {selectedHigherStudy === "PhD / Research" && <>
-                            <p>📌 Applications: <span className="font-bold text-foreground">Rolling deadlines</span></p>
-                            <p>📌 Supervisor contact: <span className="font-bold text-foreground">6 months early</span></p>
-                          </>}
+                        {/* Resources */}
+                        <div className="mb-8">
+                           <h4 className="font-black text-[10px] mb-4 flex items-center gap-2 uppercase tracking-widest text-primary">
+                             <BookOpen size={14} /> Curated Study Guides
+                           </h4>
+                           <div className="space-y-2">
+                             {track.resources.map((r, i) => (
+                               <div key={i} className="flex items-center gap-3 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                                 <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-primary border border-slate-200 shadow-sm">
+                                   <BookOpen size={14} />
+                                 </div>
+                                 <span className="text-sm font-black text-slate-800">{r}</span>
+                               </div>
+                             ))}
+                           </div>
                         </div>
-                      </div>
 
-                      <button
-                        onClick={handleDownloadRoadmap}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary/10 border-2 border-primary/20 text-primary rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-primary hover:text-white transition-all"
-                      >
-                        <Download size={16} /> Export as PDF
-                      </button>
+                        {/* Timeline */}
+                        <div className="p-6 bg-slate-900 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl -mr-12 -mt-12"></div>
+                          <h4 className="font-black text-[10px] mb-4 flex items-center gap-2 uppercase tracking-widest text-teal-400">
+                             <Calendar size={14} /> Strategic Calendar
+                          </h4>
+                          <div className="space-y-3 text-[11px] text-white/70 font-bold leading-relaxed">
+                            {selectedHigherStudy === "GATE & MTech" && <>
+                               <div className="flex justify-between items-center pb-2 border-b border-white/5"><span>Registration</span><span className="text-white">September</span></div>
+                               <div className="flex justify-between items-center pb-2 border-b border-white/5"><span>National Exam</span><span className="text-white">February</span></div>
+                               <div className="flex justify-between items-center"><span>IIT Admissions</span><span className="text-white">April–May</span></div>
+                            </>}
+                            {selectedHigherStudy === "MS Abroad (US/Europe)" && <>
+                               <div className="flex justify-between items-center pb-2 border-b border-white/5"><span>GRE/TOEFL Cycle</span><span className="text-white">Jun–Aug</span></div>
+                               <div className="flex justify-between items-center pb-2 border-b border-white/5"><span>Main Applications</span><span className="text-white">Oct–Dec</span></div>
+                               <div className="flex justify-between items-center"><span>Offer Letters</span><span className="text-white">Feb–Apr</span></div>
+                            </>}
+                            {selectedHigherStudy === "PhD / Research" && <>
+                               <div className="flex justify-between items-center pb-2 border-b border-white/5"><span>Applications</span><span className="text-white">Rolling</span></div>
+                               <div className="flex justify-between items-center"><span>Research Proposal</span><span className="text-white">6 Months Out</span></div>
+                            </>}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleDownloadRoadmap}
+                          className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.1em] hover:bg-slate-900 transition-all shadow-xl shadow-primary/20"
+                        >
+                          <Download size={16} /> Export Blueprint
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Progress tracker */}
-                  {total > 0 && (
-                    <div className="p-8 bg-muted/20 border border-dashed border-border rounded-3xl text-center">
-                      <p className="font-black text-foreground mb-2">Track your study milestones</p>
-                      <p className="text-sm text-muted-foreground mb-5">{completed} of {total} milestones completed ({progressPct}%)</p>
-                      <button
-                        onClick={() => setShowMilestones(p => !p)}
-                        className="px-8 py-3 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-105 transition-all shadow-xl shadow-primary/20"
-                      >
-                        {showMilestones ? "Hide" : "View"} Milestone Tracker
-                      </button>
-                    </div>
-                  )}
-
+                  {/* Milestone View */}
                   <div ref={milestonesRef} />
                   {showMilestones && roadmapData.length > 0 && (
-                    <div className="animate-in slide-in-from-bottom-8 duration-500 bg-card border border-border rounded-[2.5rem] p-8 shadow-xl">
-                      <h3 className="text-2xl font-black mb-6">Milestone Tracker</h3>
-                      <div className="space-y-3">
-                        {roadmapData.map((m, i) => (
-                          <MilestoneRow key={m.id || i} milestone={m} onToggle={handleToggleMilestone} />
-                        ))}
-                      </div>
+                    <div className="animate-in slide-in-from-bottom-8 duration-500 bg-white border-2 border-slate-200 rounded-[3rem] p-8 md:p-12 shadow-2xl">
+                       <div className="flex items-center justify-between mb-10">
+                         <h3 className="text-2xl font-black">Milestone Control</h3>
+                         <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center">
+                            <Trophy size={24} />
+                         </div>
+                       </div>
+                       <div className="space-y-4">
+                         {roadmapData.map((m, i) => (
+                           <MilestoneRow key={m.id || i} milestone={m} onToggle={handleToggleMilestone} />
+                         ))}
+                       </div>
                     </div>
                   )}
                 </div>

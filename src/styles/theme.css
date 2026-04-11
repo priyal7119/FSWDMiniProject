@@ -1,5 +1,3 @@
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --font-size: 17px;
   
@@ -39,29 +37,6 @@
   --glass-border: rgba(255, 255, 255, 0.4);
   --glass-blur: blur(16px);
   --ring: #0D9488;
-}
-
-.dark {
-  --mapout-bg: #020617; /* Deep Onyx */
-  --mapout-primary: #F8FAFC;
-  --mapout-secondary: #2DD4BF; /* Lighter Teal for dark mode */
-  --mapout-accent: #1E293B;
-  --mapout-text: #F1F5F9;
-  --mapout-border: #1E293B;
-  
-  --background: #020617;
-  --foreground: #F8FAFC;
-  --card: #0F172A;
-  --card-foreground: #F8FAFC;
-  --border: #1E293B;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --accent: #334155;
-  --accent-foreground: #F8FAFC;
-  
-  --glass-bg: rgba(15, 23, 42, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --ring: #2DD4BF;
 }
 
 @theme inline {

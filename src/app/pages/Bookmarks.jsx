@@ -33,7 +33,7 @@ export function Bookmarks() {
 
       const fetchBookmarks = async () => {
          try {
-            const data = await getBookmarks(token);
+            const data = await getBookmarks();
             const bookmarks = Array.isArray(data) ? data : [];
             setItems(bookmarks);
             setFilteredItems(bookmarks);
@@ -59,9 +59,9 @@ export function Bookmarks() {
 
    const handleRemove = async (id) => {
       try {
-         await removeBookmark(token, id);
+         await removeBookmark(id);
          setItems(items.filter(item => item.id !== id));
-         success("Resource de-archived.");
+         success("Resource removed from archive.");
       } catch (err) {
          console.error("Error removing bookmark:", err);
          toastError("Failed to remove item.");

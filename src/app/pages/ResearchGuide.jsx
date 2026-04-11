@@ -108,9 +108,17 @@ export function ResearchGuide() {
            <div className="lg:col-span-3 space-y-12">
               {activeSegment === 'methodology' && (
                 <div className="bg-card border border-border rounded-[3rem] p-10 lg:p-16 shadow-sm animate-in fade-in duration-500">
-                  <div className="flex items-center gap-4 mb-10 text-primary">
-                      <BookOpen size={32} />
-                      <div className="h-px flex-1 bg-border" />
+                  <div className="flex items-center justify-between mb-10 group">
+                    <div className="flex items-center gap-4 text-primary">
+                        <BookOpen size={32} />
+                        <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <button 
+                      onClick={() => handleSave("Systematic Research", "Comprehensive guide on academic writing methodology.")}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-primary/5 text-primary border border-primary/20 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all ml-4"
+                    >
+                      <Archive size={14} /> Archive Metadata
+                    </button>
                   </div>
                   
                   <h2 className="text-4xl font-black mb-10 tracking-tight text-foreground text-left">Systematic Research</h2>

@@ -1,21 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { 
-  FileCheck, AlertTriangle, Lightbulb, Download, 
-  Upload, CheckCircle, TrendingUp, Zap, Lock, 
-  BarChart3, FileText, X, ChevronRight, PenTool, 
-  Clipboard, Archive, Map, Shield, Layout, Trophy, Target, Search 
+import * as pdfjsLib from "pdfjs-dist";
+
+// Fix for Vite: properly set the worker source
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
+
+import {
+  FileCheck, AlertTriangle, Lightbulb, Download,
+  Upload, CheckCircle, TrendingUp, Zap, Lock,
+  BarChart3, FileText, X, ChevronRight, PenTool,
+  Clipboard, Archive, Map, Shield, Layout, Trophy, Target, Search, Star
 } from "lucide-react";
-import { createResume, getStats, analyzeResume, getResumes, getSkills } from "../utils/api.js";
-import { t } from "../utils/translate.js";
+import { createResume, getStats, analyzeResume, getResumes } from "../utils/api.js";
 import { useToast } from "../components/Toast.jsx";
 import { jsPDF } from "jspdf";
 
 export function ResumeStudio() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const language = localStorage.getItem("language") || "English";
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isResumeUploaded, setIsResumeUploaded] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [resumeScore, setResumeScore] = useState(0);
@@ -24,8 +29,8 @@ export function ResumeStudio() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const { success, error: toastError, info, warning } = useToast();
-  
+  const { success, error: toastError, info } = useToast();
+
   const [formData, setFormData] = useState({
     fullName: "", email: "", phone: "", linkedin: "", github: "",
     education: "", skills: "", projects: "", internships: "", achievements: "",
@@ -52,10 +57,7 @@ export function ResumeStudio() {
 
     const fetchData = async () => {
       try {
-        setIsLoggedIn(true);
-        const [stats] = await Promise.all([
-          getStats(token)
-        ]);
+        const stats = await getStats(token);
         setResumeScore(stats.resume_score || 75);
         await fetchHistory();
       } catch (err) {
@@ -79,23 +81,29 @@ export function ResumeStudio() {
     });
   };
 
+  const handleRemoveFile = () => {
+    setIsResumeUploaded(false);
+    setAnalysisResults(null);
+    setUploadedFile(null);
+    setResumeScore(0);
+    success("Resume removed. Ready for new upload.");
+  };
+
   const createPDFDocument = () => {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageW  = doc.internal.pageSize.getWidth();   // 210
-    const pageH  = doc.internal.pageSize.getHeight();  // 297
+    const pageW = doc.internal.pageSize.getWidth();   // 210
+    const pageH = doc.internal.pageSize.getHeight();  // 297
 
     // ── Palette ─────────────────────────────────────────────────────
-    const teal      = [20,  184, 166];   // primary
-    const tealDark  = [13,  148, 136];   // darker teal
-    const white     = [255, 255, 255];
-    const dark      = [15,  23,  42];
-    const mid       = [51,  65,  85];
-    const light     = [248, 250, 252];
-    const muted     = [100, 116, 139];
-    const sideW     = 64;  // sidebar width
-    const mainX     = sideW + 10;
-    const mainW     = pageW - mainX - 12;
-    const name      = formData.fullName ? formData.fullName : 'Your Name';
+    const teal = [20, 184, 166];   // primary
+    const white = [255, 255, 255];
+    const dark = [15, 23, 42];
+    const mid = [51, 65, 85];
+    const muted = [100, 116, 139];
+    const sideW = 64;  // sidebar width
+    const mainX = sideW + 10;
+    const mainW = pageW - mainX - 12;
+    const name = formData.fullName ? formData.fullName : 'Your Name';
 
     // ── Sidebar background ──────────────────────────────────────────
     doc.setFillColor(...dark);
@@ -115,23 +123,21 @@ export function ResumeStudio() {
     doc.setTextColor(...white);
     doc.text(name.toUpperCase(), mainX + 2, 18);
 
-    // Thin teal underline beneath name
+    // Thin teal underline
     doc.setDrawColor(...teal);
     doc.setLineWidth(0.8);
     doc.line(mainX + 2, 21, pageW - 12, 21);
 
     // Contact row
     const contactParts = [
-      formData.email   && `EMAIL: ${formData.email}`,
-      formData.phone   && `PHONE: ${formData.phone}`,
+      formData.email && `EMAIL: ${formData.email}`,
+      formData.phone && `PHONE: ${formData.phone}`,
       formData.linkedin && `LINKEDIN: ${formData.linkedin}`,
-      formData.github  && `GITHUB: ${formData.github}`,
     ].filter(Boolean);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(180, 210, 210);
-    // Split into two rows if many items
     const row1 = contactParts.slice(0, 2).join('    ');
     const row2 = contactParts.slice(2).join('    ');
     doc.text(row1, mainX + 2, 30);
@@ -147,30 +153,23 @@ export function ResumeStudio() {
     doc.text(initial, sideW / 2, 29, { align: 'center' });
 
     // ── Column helpers ──────────────────────────────────────────────
-    let lyPos = 54;  // sidebar y
-    let ryPos = 54;  // main y
+    let lyPos = 54;
+    let ryPos = 54;
 
     const addSideSection = (title, content) => {
       if (!content || !content.trim()) return;
-      if (lyPos > pageH - 18) return;
-      // Title
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
       doc.setTextColor(...teal);
       doc.text(title.toUpperCase(), 5, lyPos);
       lyPos += 1.5;
-      doc.setDrawColor(...teal);
-      doc.setLineWidth(0.3);
       doc.line(5, lyPos, sideW - 6, lyPos);
       lyPos += 4;
-
-      // Render skills as wrapped pill-like text entries
       const items = content.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(200, 230, 228);
       items.forEach(item => {
-        if (lyPos > pageH - 12) return;
         const lines = doc.splitTextToSize(`• ${item}`, sideW - 10);
         doc.text(lines, 5, lyPos);
         lyPos += lines.length * 4 + 1;
@@ -180,8 +179,6 @@ export function ResumeStudio() {
 
     const addMainSection = (title, content) => {
       if (!content || !content.trim()) return;
-      if (ryPos > pageH - 20) { doc.addPage(); ryPos = 20; }
-      // Section heading
       doc.setFillColor(...teal);
       doc.roundedRect(mainX, ryPos - 4, mainW, 7, 1, 1, 'F');
       doc.setFont('helvetica', 'bold');
@@ -189,48 +186,24 @@ export function ResumeStudio() {
       doc.setTextColor(...white);
       doc.text(title.toUpperCase(), mainX + 3, ryPos + 0.5);
       ryPos += 9;
-
-      // Content — detect line-separated entries and render with bullet
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(...mid);
-      const entries = content.split('\n').filter(l => l.trim());
-      if (entries.length > 1) {
-        entries.forEach(entry => {
-          if (ryPos > pageH - 14) { doc.addPage(); ryPos = 20; }
-          const lines = doc.splitTextToSize(entry.trim(), mainW - 6);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7);
-          doc.setTextColor(...teal);
-          doc.text('▸', mainX + 1, ryPos);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8.5);
-          doc.setTextColor(...mid);
-          doc.text(lines, mainX + 5, ryPos);
-          ryPos += lines.length * 4.5 + 3;
-        });
-      } else {
-        const lines = doc.splitTextToSize(content.trim(), mainW - 2);
-        doc.text(lines, mainX, ryPos);
-        ryPos += lines.length * 4.5;
-      }
-      ryPos += 7;
+      const lines = doc.splitTextToSize(content.trim(), mainW - 2);
+      doc.text(lines, mainX, ryPos);
+      ryPos += lines.length * 4.5 + 7;
     };
 
-    // ── Populate Sidebar ────────────────────────────────────────────
-    addSideSection('SKILLS',        formData.skills);
-    addSideSection('ACHIEVEMENTS',  formData.achievements);
-
-    // ── Populate Main ───────────────────────────────────────────────
-    addMainSection('Education',  formData.education);
+    addSideSection('SKILLS', formData.skills);
+    addSideSection('ACHIEVEMENTS', formData.achievements);
+    addMainSection('Education', formData.education);
     addMainSection('Experience', formData.internships);
-    addMainSection('Projects',   formData.projects);
+    addMainSection('Projects', formData.projects);
 
-    // ── Footer ──────────────────────────────────────────────────────
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...muted);
-    doc.text('Crafted with MapOut Resume Studio  •  mapout.app', pageW / 2, pageH - 5, { align: 'center' });
+    doc.text('Crafted with MapOut Resume Studio • mapout.app', pageW / 2, pageH - 5, { align: 'center' });
 
     return doc;
   };
@@ -272,12 +245,33 @@ export function ResumeStudio() {
     if (file && token) {
       try {
         setLoading(true);
-        const result = await analyzeResume(token, file);
-        
-        // Save to database
+        info("Extracting text and analyzing with AI...");
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+        let imageData = null;
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+          if (i === 1) {
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            await page.render({ canvasContext: context, viewport }).promise;
+            imageData = canvas.toDataURL("image/jpeg", 0.8);
+          }
+        }
+
+        const result = await analyzeResume(token, fullText, file, imageData);
+
         await createResume(token, {
           title: file.name,
-          content: JSON.stringify({ analysis: result }),
+          content: JSON.stringify({ analysis: result, text: fullText.substring(0, 500) }),
           analysis_score: result,
           file_url: result.url
         });
@@ -289,7 +283,8 @@ export function ResumeStudio() {
         success(`Analysis complete! Successfully saved to your archive.`);
         fetchHistory();
       } catch (err) {
-        toastError("Failed to upload and analyze resume");
+        console.error("Analysis failed:", err);
+        toastError("Failed to extract or analyze resume. Ensure it's a valid text-based PDF.");
       } finally {
         setLoading(false);
       }
@@ -298,24 +293,31 @@ export function ResumeStudio() {
     }
   };
 
-  const loadFromHistory = (resume) => {
+  const handleLoadFromHistory = (resume) => {
     try {
       let data = {};
-      try { data = JSON.parse(resume.content || '{}'); } catch (_) { data = {}; }
-      const analysis = resume.analysis_score || data.analysis;
+      try { 
+        data = typeof resume.content === 'string' ? JSON.parse(resume.content) : resume.content; 
+      } catch (_) { data = {}; }
+      
+      let analysis = resume.analysis_score || data.analysis;
+      // Handle cases where analysis might be a string (legacy/db edge cases)
+      if (typeof analysis === 'string') {
+        try { analysis = JSON.parse(analysis); } catch (_) {}
+      }
 
       // Restore form fields if this was a builder resume
-      if (data.fullName !== undefined || data.education !== undefined) {
+      if (data && (data.fullName !== undefined || data.education !== undefined)) {
         setFormData({
-          fullName:     data.fullName     || '',
-          email:        data.email        || '',
-          phone:        data.phone        || '',
-          linkedin:     data.linkedin     || '',
-          github:       data.github       || '',
-          education:    data.education    || '',
-          skills:       data.skills       || '',
-          projects:     data.projects     || '',
-          internships:  data.internships  || '',
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          linkedin: data.linkedin || '',
+          github: data.github || '',
+          education: data.education || '',
+          skills: data.skills || '',
+          projects: data.projects || '',
+          internships: data.internships || '',
           achievements: data.achievements || '',
         });
       }
@@ -327,9 +329,10 @@ export function ResumeStudio() {
         setUploadedFile({ name: resume.title });
         success(`Loaded: ${resume.title}`);
       } else {
-        // No analysis stored — just restore form data quietly
-        success(`Restored resume: ${resume.title}`);
+        success(`Restored data: ${resume.title}`);
       }
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error('loadFromHistory error:', err);
       toastError('Failed to load this resume from history.');
@@ -354,244 +357,281 @@ export function ResumeStudio() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Builder Column */}
-        <div className="space-y-8">
-          <div className="bg-card border border-border rounded-[2.5rem] p-10 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-black tracking-tight flex items-center gap-3 text-foreground">
-                <PenTool className="text-primary" size={24} /> Resume Builder
-              </h2>
-              <button
-                onClick={handleClearForm}
-                className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-500 bg-rose-500/10 hover:bg-rose-500 hover:text-white rounded-xl border border-rose-500/20 transition-all"
-              >
-                <X size={13} /> Clear All
-              </button>
-            </div>
-            <div className="space-y-6">
-              {[
-                { label: "Full Name", name: "fullName", placeholder: "John Doe" },
-                { label: "Email Address", name: "email", placeholder: "john@example.com" },
-                { label: "Phone Number", name: "phone", placeholder: "+1 234 567 8900" },
-                { label: "LinkedIn URL", name: "linkedin", placeholder: "linkedin.com/in/johndoe" },
-                { label: "GitHub URL", name: "github", placeholder: "github.com/johndoe" }
-              ].map((field) => (
-                <div key={field.name}>
-                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{field.label}</label>
-                  <input
-                    type="text"
-                    name={field.name}
-                    value={formData[field.name]}
-                    onChange={handleChange}
-                    placeholder={field.placeholder}
-                    className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-foreground"
-                  />
-                </div>
-              ))}
-              
-              {[
-                { label: "Education", name: "education", placeholder: "B.Tech in Computer Science, XYZ University (2022-2026)" },
-                { label: "Skills", name: "skills", placeholder: "JavaScript, React, Node.js, Python, SQL" },
-                { label: "Projects", name: "projects", placeholder: "Describe your key projects and their impact..." },
-                { label: "Internships / Experience", name: "internships", placeholder: "Describe your internship or work experiences..." },
-                { label: "Achievements", name: "achievements", placeholder: "Awards, certifications, hackathons..." }
-              ].map((area) => (
-                <div key={area.name}>
-                  <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">{area.label}</label>
-                  <textarea
-                    name={area.name}
-                    value={formData[area.name]}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder={area.placeholder}
-                    className="w-full px-6 py-4 bg-muted/30 border border-border rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-foreground"
-                  />
-                </div>
-              ))}
 
-              <div className="flex gap-4 pt-4">
+        {/* Left Column: Resume Builder */}
+        <div className="space-y-12">
+          <div className="p-10 bg-white border-2 border-slate-200 rounded-[3.5rem] shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-slate-50 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-slate-100 transition-colors"></div>
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                    <PenTool size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black tracking-tight text-foreground">Resume Builder</h2>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">Design your resume</p>
+                  </div>
+                </div>
                 <button
-                  onClick={handlePreview}
-                  className="flex-1 py-4 bg-primary text-white rounded-2xl font-black text-[12px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-teal-500/20"
+                  onClick={handleClearForm}
+                  className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-500 bg-rose-500/10 hover:bg-rose-500 hover:text-white rounded-xl border border-rose-500/20 transition-all font-bold"
                 >
-                  Preview Resume
+                  <X size={13} /> Clear Form
                 </button>
-                <button
-                  onClick={handleDownloadPDF}
-                  className="flex-1 py-4 bg-muted border border-border text-foreground rounded-2xl font-black text-[12px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
-                >
-                  <Download size={16} /> Download PDF
-                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { label: "Full Name", name: "fullName", placeholder: "John Doe" },
+                    { label: "Email Address", name: "email", placeholder: "john@example.com" },
+                    { label: "Phone Number", name: "phone", placeholder: "+1 234 567 8900" },
+                    { label: "LinkedIn URL", name: "linkedin", placeholder: "linkedin.com/in/johndoe" },
+                  ].map((field) => (
+                    <div key={field.name}>
+                      <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 ml-2">{field.label}</label>
+                      <input
+                        type="text"
+                        name={field.name}
+                        value={formData[field.name]}
+                        onChange={handleChange}
+                        placeholder={field.placeholder}
+                        className="w-full px-6 py-4 bg-muted/20 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 transition-all font-medium text-foreground outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {[
+                  { label: "Education", name: "education", placeholder: "Certifications, Degrees..." },
+                  { label: "Core Skills", name: "skills", placeholder: "Languages, Tools..." },
+                  { label: "Key Projects", name: "projects", placeholder: "Technical impact..." },
+                  { label: "Internships", name: "internships", placeholder: "Roles, Outcomes..." },
+                  { label: "Achievements", name: "achievements", placeholder: "Awards, Hackathons..." }
+                ].map((area) => (
+                  <div key={area.name}>
+                    <label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 ml-2">{area.label}</label>
+                    <textarea
+                      name={area.name}
+                      value={formData[area.name]}
+                      onChange={handleChange}
+                      rows={3}
+                      placeholder={area.placeholder}
+                      className="w-full px-6 py-4 bg-muted/20 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 transition-all font-medium text-foreground outline-none resize-none"
+                    />
+                  </div>
+                ))}
+
+                <div className="flex gap-4 pt-6">
+                  <button onClick={handlePreview} className="flex-1 py-5 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-teal-500/20">Preview Blueprint</button>
+                  <button onClick={handleDownloadPDF} className="flex-1 py-5 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+                    <Download size={18} /> Export PDF
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Analysis Column */}
-        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
-          <h2 className="text-2xl font-black tracking-tight text-foreground">Analysis & Insights</h2>
+        {/* Right Column: Intelligence & Optimization */}
+        <div className="space-y-10">
 
-          {/* Pro Tips */}
-          <div className="bg-blue-50 border border-blue-100 rounded-[2rem] p-8">
-            <h3 className="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">
-              <Shield size={20} className="text-blue-600" /> Pro Tips for Better Resume
+          {/* 1. Pro Tips (Always Visible) */}
+          <div className="p-10 bg-slate-900 text-white rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] -mr-32 -mt-32 transition-all group-hover:bg-teal-500/20"></div>
+            <h3 className="text-xl font-black mb-8 flex items-center gap-3 relative z-10">
+              <Shield size={22} className="text-teal-400" /> Pro Tips
             </h3>
-            <ul className="space-y-2">
+            <ul className="space-y-4 relative z-10">
               {[
-                "Use action verbs (Developed, Implemented, Designed)",
-                "Quantify achievements (increased by 40%, managed 5 projects)",
-                "Keep it to 1-2 pages maximum",
-                "Use industry keywords from job descriptions",
-                "Maintain consistent formatting and font",
-                "List most recent experience first",
-                "Proofread for grammar and spelling"
+                "Quantify your results with metrics (e.g., 'Gained 40% speed')",
+                "Use high-impact action verbs (Architected, Engineered)",
+                "Maintain surgical precision in your skill map",
+                "Keep your blueprint to a strict 1-2 page maximum"
               ].map((tip, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm font-medium text-blue-800/80">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+                <li key={i} className="flex items-start gap-4 text-sm font-semibold text-white/70 group-hover:text-white transition-colors">
+                  <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 shadow-[0_0_10px_rgba(45,212,191,0.5)]" />
                   {tip}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Upload Section */}
-          <div className="bg-card border border-border rounded-[2rem] p-8 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-black text-foreground">Upload Your Resume</h3>
-              {!uploadedFile && (
-                <label htmlFor="resume-upload-trigger" className="px-4 py-1.5 bg-primary/10 text-primary rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all cursor-pointer">
-                  Get Analysis
-                </label>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground font-medium mb-6">Upload an existing PDF to get AI-powered scoring, tailored recommendations, and missing section feedback.</p>
-            
-            {uploadedFile ? (
-              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl mt-4">
-                <div className="flex items-center gap-3">
-                  <FileText className="text-rose-500" size={24} />
-                  <span className="text-sm font-bold truncate max-w-[200px] text-foreground">{uploadedFile.name}</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    setUploadedFile(null);
-                    setIsResumeUploaded(false);
-                    setAnalysisResults(null);
-                  }}
-                  className="p-1 hover:bg-white rounded-full text-muted-foreground hover:text-rose-500 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <label htmlFor="resume-upload-trigger" className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-border rounded-[2rem] hover:bg-muted/30 cursor-pointer transition-all group">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-sm">
-                  <Upload size={28} />
-                </div>
-                <div className="text-center">
-                  <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Click to Upload PDF</p>
-                  <p className="text-xs text-muted-foreground font-medium">Supports PDF format · Max 10 MB</p>
-                </div>
-                <input id="resume-upload-trigger" type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-              </label>
-            )}
+          {/* 2. Upload Section (Sequential) */}
+          <div className="p-10 bg-white border-2 border-slate-200 rounded-[3.5rem] shadow-sm relative overflow-hidden">
+             <div className="flex justify-between items-center mb-8">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm">
+                   <Upload size={20} />
+                 </div>
+                 <div>
+                    <h3 className="font-black text-foreground">Upload Resume</h3>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Step 1: File Analysis</p>
+                 </div>
+               </div>
+               {isResumeUploaded && (
+                 <button
+                   onClick={handleRemoveFile}
+                   className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center border border-slate-100"
+                 >
+                   <X size={18} />
+                 </button>
+               )}
+             </div>
+
+             {isResumeUploaded && uploadedFile ? (
+               <div className="p-6 bg-slate-50 border-2 border-slate-200 rounded-[2rem] flex items-center gap-5 transition-all animate-in fade-in zoom-in-95 duration-500">
+                 <div className="w-14 h-14 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-primary shadow-sm">
+                   <FileText size={28} />
+                 </div>
+                 <div className="flex-1 overflow-hidden">
+                    <p className="font-black text-slate-900 text-sm truncate">{uploadedFile.name}</p>
+                    <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest mt-1 flex items-center gap-2">
+                      <Zap size={10} className="fill-teal-600 animate-pulse" /> AI Sync Active
+                    </p>
+                 </div>
+               </div>
+             ) : (
+               <label htmlFor="resume-upload-trigger" className="flex flex-col items-center justify-center gap-4 py-16 border-2 border-dashed border-slate-200 rounded-[2.5rem] hover:bg-slate-50 cursor-pointer transition-all group">
+                 <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-sm">
+                   <Upload size={32} />
+                 </div>
+                 <div className="text-center">
+                   <p className="font-black text-sm uppercase tracking-widest mb-1 text-foreground">Select PDF Resume</p>
+                   <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Supports PDF up to 10MB</p>
+                 </div>
+                 <input id="resume-upload-trigger" type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
+               </label>
+             )}
           </div>
 
-          {/* Analysis Results Container */}
+          {/* 3. Analysis Dashboard (Below Upload) */}
           {isResumeUploaded && analysisResults && (
-            <div className="space-y-6">
-              <h3 className="text-xl font-black tracking-tight">Analysis Results</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="p-8 bg-indigo-50 border border-indigo-100 rounded-[2rem] shadow-sm">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FileText className="text-indigo-600" size={18} />
-                    <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Resume Score</span>
-                  </div>
-                  <p className="text-4xl font-black text-indigo-900 mb-2">{analysisResults.score || 82}<span className="text-lg text-indigo-400">/100</span></p>
-                  <p className="text-[10px] text-indigo-700/70 font-bold leading-tight">Excellent resume! Ready for applications.</p>
-                </div>
-                <div className="p-8 bg-purple-50 border border-purple-100 rounded-[2rem] shadow-sm">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Zap className="text-purple-600" size={18} />
-                    <span className="text-[10px] font-black text-purple-900 uppercase tracking-widest">ATS Compatibility</span>
-                  </div>
-                  <p className="text-4xl font-black text-purple-900 mb-2">{analysisResults.ats_compatibility || 87}<span className="text-lg text-purple-400">%</span></p>
-                  <p className="text-[10px] text-purple-700/70 font-bold leading-tight">Optimized for applicant tracking systems.</p>
-                </div>
-              </div>
-
-              {/* Keywords Found */}
-              {analysisResults.keywords && analysisResults.keywords.length > 0 && (
-                <div className="p-8 bg-teal-50 border border-teal-100 rounded-[2rem] shadow-sm">
-                  <h4 className="text-[10px] font-black text-teal-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Search size={14} /> Keywords Found
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResults.keywords.map((tag) => (
-                      <span key={tag} className="px-4 py-1.5 bg-white border border-teal-200 rounded-full text-xs font-bold text-teal-800">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* AI Suggestions */}
-              <div className="p-8 bg-primary text-white rounded-[2rem] shadow-2xl shadow-teal-500/10 mb-10 relative overflow-hidden">
-                <div className="relative z-10">
-                  <h4 className="font-black text-lg mb-4 flex items-center gap-2">
-                    <Lightbulb size={20} className="text-teal-200" /> AI Suggestions
-                  </h4>
-                  <p className="text-sm font-medium leading-relaxed italic opacity-90">
-                    {analysisResults.score >= 80 ? "Your resume looks great! It's ready for applications." : "Some sections could be improved. Try adding more skills or project details to boost your score."}
-                  </p>
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-12">
+              <div className="p-10 bg-slate-50 border-2 border-slate-200 rounded-[3.5rem] shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white rounded-full blur-3xl -mr-24 -mt-24"></div>
+                <div className="relative z-10 text-center">
+                   <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-10 flex items-center justify-center gap-2">
+                     <Zap size={14} className="fill-primary" /> Intelligence Report
+                   </h4>
+                   <div className="grid grid-cols-2 gap-6">
+                     <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm group hover:border-primary/40 transition-all">
+                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Health Score</p>
+                       <p className="text-5xl font-black text-primary transition-all group-hover:scale-110">
+                         {Math.round(analysisResults?.score || resumeScore || 0)}%
+                       </p>
+                     </div>
+                     <div className="p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm group hover:border-teal-500/40 transition-all">
+                       <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">ATS Match</p>
+                       <p className="text-5xl font-black text-teal-600 transition-all group-hover:scale-110">
+                         {Math.round(analysisResults?.ats_compatibility || 0)}%
+                       </p>
+                     </div>
+                   </div>
                 </div>
               </div>
 
-              {/* Missing Sections */}
-              {analysisResults.missing && analysisResults.missing.length > 0 && (
-                <div className="p-8 bg-rose-50 border border-rose-100 rounded-[2rem] shadow-sm">
-                  <h4 className="text-[10px] font-black text-rose-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <AlertTriangle size={14} /> Missing Sections
+              {analysisResults.bullet_suggestions && (
+                <div className="p-10 bg-white border-2 border-slate-200 rounded-[3.5rem] shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                  <h4 className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-10 flex items-center gap-3">
+                    <Zap size={18} className="text-primary animate-pulse" /> Precision Suggestions
                   </h4>
-                  <ul className="space-y-1">
-                    {analysisResults.missing.map((item) => (
-                      <li key={item} className="text-xs font-bold text-rose-800">• {item}</li>
+                  <ul className="space-y-6">
+                    {analysisResults.bullet_suggestions.slice(0, 5).map((suggestion, i) => (
+                      <li key={i} className="flex items-start gap-6 group">
+                        <div className="mt-1 w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-lg shadow-teal-500/20 group-hover:scale-110 transition-transform">
+                          0{i + 1}
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 leading-relaxed font-header">{suggestion}</p>
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </div>
-          )}
 
-
-          {/* Improvement Suggestions */}
-          {isResumeUploaded && analysisResults && (
-            <div className="space-y-4">
-              <h4 className="text-lg font-black tracking-tight flex items-center gap-2">
-                <TrendingUp className="text-primary" size={20} /> Improvement Suggestions
-              </h4>
-              <div className="p-6 bg-card border border-border rounded-2xl shadow-sm">
-                <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-                  Maintain persistent optimization by integrating high-impact technical keywords and quantifying achievements for better conversion.
-                </p>
+              <div className="p-8 bg-slate-900 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/5 rounded-full blur-3xl"></div>
+                 <div className="relative z-10">
+                    <h4 className="text-[10px] font-black text-teal-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                      <AlertTriangle size={14} /> Gap Analysis Verdict
+                    </h4>
+                    <p className="text-sm font-medium leading-relaxed text-teal-50/70 italic">
+                      "{analysisResults.feedback || "Based on your current architectural profile, these adjustments will solidify your market position."}"
+                    </p>
+                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Preview Modal */}
+      {/* ── Recent Library ────────────────────────────────────────── */}
+      {resumes.length > 0 && (
+        <div className="mt-24 pt-24 border-t-2 border-slate-100 animate-in fade-in duration-1000">
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <h2 className="text-3xl font-black text-foreground mb-2">Recent Library</h2>
+              <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Saved Architectural Blueprints</p>
+            </div>
+            <div className="w-12 h-12 bg-slate-50 border-2 border-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+               <Archive size={20} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {resumes.slice(0, 8).map((resume) => (
+              <div 
+                key={resume.id}
+                onClick={() => handleLoadFromHistory(resume)}
+                className="p-6 bg-white border-2 border-slate-200 rounded-[2.5rem] hover:border-primary/40 hover:scale-[1.02] cursor-pointer transition-all group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-primary/5"></div>
+                
+                <div className="flex items-center gap-4 mb-6 relative z-10">
+                  <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-all">
+                    <FileText size={20} />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <h4 className="font-black text-sm text-foreground truncate">{resume.title}</h4>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                       {new Date(resume.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-50 relative z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.4)]"></div>
+                    <span className="text-[10px] font-black uppercase text-teal-600 tracking-tighter">Score: {resume.analysis_score?.score || 0}%</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-300 group-hover:text-primary transition-all translate-x-0 group-hover:translate-x-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {pdfPreviewUrl && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-5xl h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
-            <div className="flex items-center justify-between px-10 py-6 border-b border-border bg-muted/30">
-              <h3 className="text-xl font-black tracking-tight text-foreground">Resume Preview</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-8 animate-in fade-in duration-300">
+          <div className="bg-white border-2 border-slate-900 w-full max-w-5xl h-[90vh] rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
+            <div className="flex items-center justify-between px-10 py-8 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-4">
-                <button onClick={handleDownloadPDF} className="px-6 py-3 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest">Download Archive</button>
-                <button onClick={() => setPdfPreviewUrl(null)} className="p-3 bg-muted rounded-full hover:bg-white transition-colors text-foreground"><X size={24} /></button>
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+                  <FileText size={20} />
+                </div>
+                <h3 className="text-xl font-black tracking-tight text-slate-900">Blueprint Preview</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <button onClick={handleDownloadPDF} className="px-8 py-4 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-teal-500/20">Download Archive</button>
+                <button onClick={() => setPdfPreviewUrl(null)} className="p-3 bg-white border border-slate-200 rounded-full hover:bg-rose-50 hover:text-rose-500 transition-all text-slate-400"><X size={24} /></button>
               </div>
             </div>
-            <div className="flex-1 bg-muted p-10 overflow-hidden flex justify-center">
-              <iframe src={pdfPreviewUrl} className="w-full h-full max-w-[800px] shadow-2xl rounded-sm border-none bg-white" title="Resume Preview" />
+            <div className="flex-1 bg-slate-200 p-12 overflow-hidden flex justify-center">
+              <iframe src={pdfPreviewUrl} className="w-full h-full max-w-[850px] shadow-2xl rounded-sm border-none bg-white" title="Resume Preview" />
             </div>
           </div>
         </div>
